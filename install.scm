@@ -23,6 +23,9 @@ exec guile -e main -s "$0" "$@"
   (when (not (zero? (system* "debootstrap" "--arch" arch "--include" "lsb-release,info,xz-utils,dirmngr,ca-certificates" release target mirror)))
     (error "Failed to bootstrap the Debian system!" target arch release mirror)))
 
+(define archictecture-list
+  (list "amd64" "arm64"  "armel" "armhf" "i368" "mips" "mips64el" "mipsel" "powerpc" "ppc64el" "s390x"))
+
 (define options-spec
   `((target
      (description
@@ -40,8 +43,11 @@ exec guile -e main -s "$0" "$@"
      (value #t))
     (arch
      (description
-      "The target architecture of the new system. Has to be of either: amd64, arm64, armel, armhf, i368, mips, mips64el, mipsel, powerpc, ppc64el, s390x")
+      ,(string-append
+	"The target architecture of the new system. Has to be of either: "
+	(string-join archictecture-list ", ") "."))
      (single-char #\a)
+     (predicate ,(lambda (arch) (member arch archictecture-list)))
      (default "amd64")
      (value-arg "arch")
      (value #t))
