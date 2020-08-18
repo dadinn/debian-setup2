@@ -15,10 +15,16 @@ exec guile -e main -s "$0" "$@"
  ((ice-9 pretty-print) #:prefix pp:)
  ((srfi srfi-1) #:prefix srfi1:))
 
+(define bootstrap-include-list
+  (list "lsb-release" "info" "xz-utils" "dirmngr" "ca-certificates"))
+
 (define (bootstrap target arch release mirror)
   (system* "apt" "install" "-y" "debootstrap")
   (utils:println "Bootstrapping Debian release" release "for archictecture" arch "...")
-  (when (not (zero? (system* "debootstrap" "--arch" arch "--include" "lsb-release,info,xz-utils,dirmngr,ca-certificates" release target mirror)))
+  (when (not (zero?
+	(system* "debootstrap" "--arch" arch "--include"
+		 (string-join bootstrap-include-list ",")
+		 release target mirror)))
     (error "Failed to bootstrap the Debian system!" target arch release mirror)))
 
 (define archictecture-list
