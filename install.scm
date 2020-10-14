@@ -29,6 +29,8 @@ exec guile -e main -s "$0" "$@"
 		 release target)))
     (error "Failed to bootstrap the Debian system!" target arch release mirror)))
 
+;;; MAIN FUNCTION
+
 (define archictecture-list
   (list "amd64" "arm64"  "armel" "armhf" "i368" "mips" "mips64el" "mipsel" "powerpc" "ppc64el" "s390x"))
 
@@ -78,21 +80,31 @@ exec guile -e main -s "$0" "$@"
       "This usage help...")
      (single-char #\h))))
 
+(define pseudofs-dirs
+  (list "dev" "sys" "proc" "run"))
+
 (define (main args)
   (let* ((options (utils:getopt-extra args options-spec))
 	 (target (hash-ref options 'target))
 	 (release (hash-ref options 'release))
 	 (arch (hash-ref options 'arch))
 	 (mirror (hash-ref options 'mirror))
+	 (locale (hash-ref options 'locale))
+	 (keymap (hash-ref options 'keymap))
+	 (keymap-parts (string-split keymap #\:))
+	 (layout (car keymap-parts))
+	 (variant (cadr keymap-parts))
+	 (timezone (hash-ref options 'timezone))
+	 (hostname (hash-ref options 'hostname))
+	 (sudouser (hash-ref options 'sudouser))
 	 (execute-only? (hash-ref options 'execute-only))
-	 (help? (hash-ref options 'help))
-	 (command (hash-ref options '() (list "/bin/sh"))))
+	 (help? (hash-ref options 'help)))
     (cond
      (help?
       (utils:println
        (string-append "USAGE:
 
-" (basename (car args)) " [OPTION...] [COMMAND...]
+" (basename (car args)) " [OPTION...]
 
 Bootstraps Debian in target directory, then chroots into it and executes COMMAND in the freshly bootstrapped Debian environment.
 
@@ -108,17 +120,74 @@ Valid options are:
      (else
       (when (not execute-only?)
 	(bootstrap target arch release mirror))
-      (let* ((current-dir (dirname (current-filename)))
-	     (conf-file "debconf.scm")
-	     (target-conf-file (utils:path target conf-file)))
-	(copy-file (utils:path current-dir conf-file) target-conf-file)
-	(chmod target-conf-file #o755)
-	(map
-	 (lambda (dir)
-	   (system* "mount" "--rbind" (utils:path "" dir) (utils:path target dir)))
-	 (list "dev" "sys" "proc" "run"))
-	(apply system* "chroot" target command)
-	(map
-	 (lambda (dir)
-	   (system* "umount" "-Rlf" (utils:path target dir)))
-	 (list "dev" "sys" "proc" "run")))))))
+      (map
+       (lambda (dir)
+	 (let ((target-path (utils:path target dir)))
+	   (when (not (file-exists? target-path)) (mkdir target-path))
+	   (system* "mount" "--rbind" (utils:path "" dir) target-path)))
+       pseudofs-dirs)
+      (let* ((config-file (utils:path target utils:config-filename))
+	     (config (utils:read-config config-file))
+	     (rootdev (hash-ref config 'rootdev))
+	     (luks-v2? (hash-ref config 'luksv2))
+	     (bootdev (hash-ref config 'bootdev rootdev))
+	     (uefiboot (hash-ref config 'uefiboot))
+	     (swapsize (hash-ref config 'swapsize))
+	     (swapfiles (hash-ref config 'swapfiles))
+	     (swapfiles (and swapfiles (string->number swapfiles)))
+	     (zpool (hash-ref config 'zpool))
+	     (rootfs (hash-ref config 'rootfs))
+	     (pid (primitive-fork)))
+	(cond
+	 ((zero? pid)
+	  (chroot target)
+	  (cond
+	   ((not bootdev)
+	    (error "boot device has to be specified!"))
+	   ((not (utils:block-device? bootdev))
+	    (error "boot device has to be a block device!" bootdev))
+	   ((and luks-v2? (<= 10 (or (deps:read-debian-version) 0)))
+	    (error "LUKS format version 2 is only supported in Debian Buster or later!"))
+	   (else
+	    (init-apt)
+	    (init-network)
+	    (configure-locale locale)
+	    (configure-timezone timezone)
+	    (configure-keyboard
+	     #:layout layout
+	     #:variant variant
+	     #:model "pc105"
+	     #:options (or options "ctrl:nocaps"))
+	    (init-sudouser sudouser)
+	    (when rootdev
+	      (system* "apt" "install" "-y" "cryptsetup"))
+	    (cond
+	     (zpool
+	      (deps:install-deps-zfs)
+	      (system* "systemctl" "enable" "zfs-import-cache.service")
+	      (system* "systemctl" "enable" "zfs-import-cache.target")
+	      (system* "systemctl" "enable" "zfs-mount.service")
+	      (system* "systemctl" "enable" "zfs-mount.target"))
+	     ((zero? swapfiles)
+	      (deps:install-deps-lvm)
+	      (let* ((lvm-dir (utils:path "" "etc" "lvm"))
+		     (lvm-file (utils:path lvm-dir "lvm.conf"))
+		     (lvmbak-file (string-append lvm-file ".bak")))
+		(utils:move-file lvm-file lvmbak-file)
+		(system* "sed" "-ire" "s|(multipath_component_detection =) [0-9]+|\\1 0|" lvm-file)
+		(system* "sed" "-ire" "s|(md_component_detection =) [0-9]+|\\1 0|" lvm-file)
+		(system* "sed" "-ire" "s|(udev_sync =) [0-9]+|\\1 0|" lvm-file)
+		(system* "sed" "-ire" "s|(udev_rules =) [0-9]+|\\1 0|" lvm-file))))
+	    (cond
+	     (zpool
+	      (deps:install-deps-zfs)
+	      (install-grub bootdev uefiboot arch grub-modules zpool rootfs))
+	     (else
+	      (system* "apt" "install" "-y" (string-append "linux-image-" arch))))))
+	  (primitive-exit 0))
+	 (else
+	  (waitpid pid)
+	  (map
+	   (lambda (dir)
+	     (system* "umount" "-Rlf" (utils:path target dir)))
+	   pseudofs-dirs))))))))
