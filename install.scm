@@ -44,6 +44,18 @@ exec guile -e main -s "$0" "$@"
       (lambda (dev) (regex:string-match "en[a-z0-9]+" dev))
       (string-split (utils:system->string* "ls" (utils:path "" "sys" "class" "net")) #\newline)))))
 
+(define (init-hostname hostname)
+  (with-output-to-file (utils:path "" "etc" "hostname")
+    (lambda ()
+      (utils:println hostname))))
+
+(define (configure-hosts hostname)
+  (with-output-to-file (utils:path "" "etc" "hosts")
+    (lambda ()
+      (utils:println "127.0.0.1 localhost")
+      (utils:println "127.0.1.1" hostname)
+      (utils:println "::1 localhost"))))
+
 (define (configure-locale locale)
   (system* "apt" "install" "-y" "locales")
   (let* ((locales-file (utils:path "" "etc" "locale.gen"))
