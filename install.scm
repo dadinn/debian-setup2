@@ -177,10 +177,34 @@ exec guile -e main -s "$0" "$@"
      (default "ftp.uk.debian.org/debian/")
      (value-arg "url")
      (value #t))
-    (lang
-     (description "Value to set LANG environment variable inside the chroot environment")
-     (default "C.UTF-8")
-     (value-arg "LANG")
+    (locale
+     (single-char #\l)
+     (description "Locale of the new system")
+     (value #t)
+     (value-arg "locale")
+     (default "en_US.UTF-8"))
+    (keymap
+     (single-char #\k)
+     (description "Default keymap of the new system")
+     (default "us:dvorak")
+     (predicate ,(lambda (keymap) (regex:string-match "[a-z]+:[a-z]+" keymap)))
+     (value-arg "keymap")
+     (value #t))
+    (timezone
+     (single-char #\t)
+     (description "Timezone of the new system")
+     (default "Europe/London")
+     (value-arg "timezone")
+     (value #t))
+    (hostname
+     (single-char #\n)
+     (description "Hostname of the new system. Should conform to RFC 1123.")
+     (value-arg "hostname")
+     (value #t))
+    (sudouser
+     (single-char #\s)
+     (description "Name for the sudo user to be used instead of root")
+     (value-arg "username")
      (value #t))
     (execute-only
      (description
