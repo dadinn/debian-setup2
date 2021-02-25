@@ -362,7 +362,7 @@ Valid options are:
 	     #:layout layout
 	     #:variant variant
 	     #:model "pc105"
-	     #:options (or options "ctrl:nocaps"))
+	     #:options "ctrl:nocaps")
 	    (init-sudouser sudouser)
 	    (when rootdev
 	      (system* "apt" "install" "-y" "cryptsetup")
