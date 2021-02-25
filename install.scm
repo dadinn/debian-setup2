@@ -300,6 +300,8 @@ Valid options are:
       (error "This script must be run as root!"))
      ((not (utils:directory? target))
       (error "Installation target directory doesn't exist!" target))
+     ((not hostname)
+      (error "Hostname must be specified for the new system!"))
      (else
       (when (not execute-only?)
 	(bootstrap target arch release mirror))
