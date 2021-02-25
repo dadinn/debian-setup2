@@ -298,6 +298,8 @@ Valid options are:
       (newline))
      ((not (utils:directory? target))
       (error "Installation target directory doesn't exist!" target))
+     ((not hostname)
+      (error "Hostname must be specified for the new system!"))
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
      (else
