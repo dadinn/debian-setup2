@@ -345,6 +345,7 @@ Valid options are:
 	(cond
 	 ((zero? pid)
 	  (chroot target)
+	  (chdir "/")
 	  (cond
 	   ((not bootdev)
 	    (error "boot device has to be specified!"))
