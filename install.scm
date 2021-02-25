@@ -355,6 +355,8 @@ Valid options are:
 	   (else
 	    (init-apt)
 	    (init-network)
+	    (init-hostname hostname)
+	    (configure-hosts hostname)
 	    (configure-locale locale)
 	    (configure-timezone timezone)
 	    (configure-keyboard
