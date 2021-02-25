@@ -383,11 +383,29 @@ Valid options are:
 	      (let* ((lvm-dir (utils:path "" "etc" "lvm"))
 		     (lvm-file (utils:path lvm-dir "lvm.conf"))
 		     (lvmbak-file (string-append lvm-file ".bak")))
-		(utils:move-file lvm-file lvmbak-file)
-		(system* "sed" "-ire" "s|(multipath_component_detection =) [0-9]+|\\1 0|" lvm-file)
-		(system* "sed" "-ire" "s|(md_component_detection =) [0-9]+|\\1 0|" lvm-file)
-		(system* "sed" "-ire" "s|(udev_sync =) [0-9]+|\\1 0|" lvm-file)
-		(system* "sed" "-ire" "s|(udev_rules =) [0-9]+|\\1 0|" lvm-file))))
+		(when (not (file-exists? lvmbak-file))
+		  (copy-file lvm-file lvmbak-file))
+		(call-with-input-file lvmbak-file
+		  (lambda (input-port)
+		    (let* ((content (rdelim:read-string input-port))
+			   (content
+			    (regex:regexp-substitute/global
+			     #f "(multipath_component_detection =) [0-9]+" content
+			     'pre 1 " 0" 'post))
+			   (content
+			    (regex:regexp-substitute/global
+			     #f "(md_component_detection =) [0-9]+" content
+			     'pre 1 " 0" 'post))
+			   (content
+			    (regex:regexp-substitute/global
+			     #f "(udev_sync =) [0-9]+" content
+			     'pre 1 " 0" 'post)))
+		      (call-with-output-file lvm-file
+			(lambda (output-port)
+			  (regex:regexp-substitute/global
+			   output-port "(udev_rules =) [0-9]+" content
+			   'pre 1 " 0" 'post))))))
+		(delete-file lvmbak-file))))
 	    (cond
 	     (zpool
 	      (install-kernel-image-zfs arch)
