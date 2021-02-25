@@ -241,9 +241,7 @@ exec guile -e main -s "$0" "$@"
 
 " (basename (car args)) " [OPTION...]
 
-Bootstraps Debian in target directory, then chroots into it and executes COMMAND in the freshly bootstrapped Debian environment.
-
-Also places configuration script debconf.sh in the target directory to help with automating the configuration.
+Bootstraps Debian in the target directory, and then configures the new system under a chroot environment.
 
 Valid options are:
 "))
