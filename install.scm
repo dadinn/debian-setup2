@@ -267,10 +267,10 @@ exec guile -e main -s "$0" "$@"
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
-    (execute-only
+    (configure-only
      (description
-      "Skip bootstrapping new system, and only execute COMMAND in chroot environment")
-     (single-char #\X))
+      "Skip bootstrapping new system, and only execute configuration steps in chroot environment.")
+     (single-char #\C))
     (help
      (description
       "This usage help...")
@@ -293,7 +293,7 @@ exec guile -e main -s "$0" "$@"
 	 (timezone (hash-ref options 'timezone))
 	 (hostname (hash-ref options 'hostname))
 	 (sudouser (hash-ref options 'sudouser))
-	 (execute-only? (hash-ref options 'execute-only))
+	 (configure-only? (hash-ref options 'configure-only))
 	 (help? (hash-ref options 'help)))
     (cond
      (help?
@@ -315,7 +315,7 @@ Valid options are:
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
      (else
-      (when (not execute-only?)
+      (when (not configure-only?)
 	(bootstrap target arch release mirror))
       (map
        (lambda (dir)
