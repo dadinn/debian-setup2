@@ -10,6 +10,7 @@ exec guile -e main -s "$0" "$@"
  ((common utils) #:prefix utils:)
  ((common deps) #:prefix deps:)
  ((ice-9 readline) #:select (readline))
+ ((ice-9 ftw) #:select (ftw))
  ((ice-9 regex) #:prefix regex:)
  ((ice-9 rdelim) #:prefix rdelim:)
  ((ice-9 popen) #:prefix popen:)
@@ -150,7 +151,22 @@ exec guile -e main -s "$0" "$@"
 	(display (string-append "GRUB_CMDLINE_LINUX=root=ZFS=" zpool "/" rootfs))
 	(newline)))))
 
-(define* (install-grub bootdev grub-modules #:key uefiboot? zpool rootfs)
+(define (file-tree-missing? root-dir filename)
+  (ftw root-dir (lambda (path info flag)
+    (not (and (eqv? flag 'regular) (string= (basename path) filename))))))
+
+(define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool rootfs)
+  ;; KERNEL
+  (let ((release (deps:read-debian-version))
+	(package (string-append "linux-image-" arch)))
+    (cond
+     ((and zpool (= 8 release))
+      (system* "apt" "install" "-y" "-t" "jessie-backports" package))
+     ((and zpool (= 10 release))
+      (system* "apt" "install" "-y" "-t" "buster-backports" package))
+     ((or (and zpool (<= 9 release)) (not zpool))
+      (system* "apt" "install" "-y" package))))
+  ;; GRUB
   (setenv "DEBIAN_FRONTEND" "noninteractive")
   (cond
    (uefiboot?
@@ -173,19 +189,12 @@ exec guile -e main -s "$0" "$@"
     (unsetenv "DEBIAN_FRONTEND")
     (configure-grub
      grub-modules
-     #:zpool zpool)
-    (system* "grub-install" bootdev))))
-
-(define (install-kernel-image-zfs arch)
-  (let ((release (deps:read-debian-version))
-	(package (string-append "linux-image-" arch)))
-    (cond
-     ((= 8 release)
-      (system* "apt" "install" "-y" "-t" "jessie-backports" package))
-     ((= 10 release)
-      (system* "apt" "install" "-y" "-t" "buster-backports" package))
-     ((<= 9 release)
-      (system* "apt" "install" "-y" package)))))
+     #:zpool zpool
+     #:rootfs rootfs)
+    (system* "grub-install" bootdev)))
+  (system "update-grub")
+  (when (file-tree-missing? (utils:path "" "boot" "grub") "zfs.mod")
+    (error "Failed installing ZFS module for GRUB!")))
 
 ;; BOOTSTRAP
 
@@ -405,21 +414,11 @@ Valid options are:
 			   output-port "(udev_rules =) [0-9]+" content
 			   'pre 1 " 0" 'post))))))
 		(delete-file lvmbak-file))))
-	    (cond
-	     (zpool
-	      (install-kernel-image-zfs arch)
-	      (install-grub
-	       bootdev (get-grub-modules)
-	       #:uefiboot? uefiboot?
-	       #:zpool zpool
-	       #:rootfs rootfs))
-	     (else
-	      (system* "apt" "install" "-y" (string-append "linux-image-" arch))
-	      (install-grub
-	       bootdev (get-grub-modules)
-	       #:uefiboot? uefiboot?
-	       #:zpool zpool
-	       #:rootfs rootfs)))))
+	    (install-kernel-and-grub
+	     arch bootdev (get-grub-modules)
+	     #:uefiboot? uefiboot?
+	     #:zpool zpool
+	     #:rootfs rootfs)))
 	  (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
 	  (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
 	    (cond
