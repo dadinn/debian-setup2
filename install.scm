@@ -420,10 +420,38 @@ Valid options are:
 	       #:uefiboot? uefiboot?
 	       #:zpool zpool
 	       #:rootfs rootfs)))))
+	  (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
+	  (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
+	    (cond
+	     ((regex:string-match "[yY]" resp)
+	      (delete-file (utils:path "" utils:config-filename))
+	      (utils:println "Removed" utils:config-filename "!"))
+	     (else
+	      (utils:println "Skipped cleaning up configuration script and temporary files."))))
 	  (primitive-exit 0))
 	 (else
 	  (waitpid pid)
 	  (map
 	   (lambda (dir)
 	     (system* "umount" "-Rlf" (utils:path target dir)))
-	   (reverse pseudofs-dirs)))))))))
+	   (reverse pseudofs-dirs))
+	  (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")
+	  (let ((resp (readline "Ready to finish installation and reboot the system? [Y/n]")))
+	    (cond
+	     ((regex:string-match "[nN]" resp)
+	      (utils:println "Skipped executing finishing steps!"))
+	     (else
+	      (utils:println "Unmounting installation directories...")
+	      (when uefiboot?
+		(system* "umount" (utils:path target "boot" "efi")))
+	      (system* "umount" (utils:path target "boot"))
+	      (cond
+	       (zpool
+		(system* "zfs" "umount" "-a")
+		(let ((root-dataset (utils:path zpool rootfs)))
+		  (system* "zfs" "set" "mountpoint=/" root-dataset)
+		  (system* "zfs" "snapshot" (string-append root-dataset "@install")))
+		(system* "zpool" "export" zpool))
+	       (else (system* "umount" target)))
+	      (utils:println "Rebooting system...")
+	      (system* "systemctl" "poweroff")))))))))))
