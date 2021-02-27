@@ -165,7 +165,9 @@ exec guile -e main -s "$0" "$@"
      ((and zpool (= 10 release))
       (system* "apt" "install" "-y" "-t" "buster-backports" package))
      ((or (and zpool (<= 9 release)) (not zpool))
-      (system* "apt" "install" "-y" package))))
+      (system* "apt" "install" "-y" package)))
+    (when zpool
+      (system* "apt" "install" "-y" "zfs-initramfs")))
   ;; GRUB
   (setenv "DEBIAN_FRONTEND" "noninteractive")
   (cond
@@ -193,7 +195,7 @@ exec guile -e main -s "$0" "$@"
      #:rootfs rootfs)
     (system* "grub-install" bootdev)))
   (system "update-grub")
-  (when (file-tree-missing? (utils:path "" "boot" "grub") "zfs.mod")
+  (when (and zpool (file-tree-missing? (utils:path "" "boot" "grub") "zfs.mod"))
     (error "Failed installing ZFS module for GRUB!")))
 
 ;; BOOTSTRAP
