@@ -166,7 +166,9 @@ exec guile -e main -s "$0" "$@"
      ((and zpool (= 10 release))
       (system* "apt" "install" "-y" "-t" "buster-backports" package))
      ((or (and zpool (<= 9 release)) (not zpool))
-      (system* "apt" "install" "-y" package))))
+      (system* "apt" "install" "-y" package)))
+    (when zpool
+      (system* "apt" "install" "-y" "zfs-initramfs")))
   ;; GRUB
   (putenv "DEBIAN_FRONTEND=noninteractive")
   (cond
