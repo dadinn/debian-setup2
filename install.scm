@@ -135,6 +135,25 @@ exec guile -e main -s "$0" "$@"
       (while (not (zero? (system "passwd")))
 	(utils:println "Passwords don't match! Please try again!"))))))
 
+(define (update-lvm-config input-port output-port)
+  "Update LVM configuration to disable udev synchronisation"
+  (let* ((content (rdelim:read-string input-port))
+	 (content
+	  (regex:regexp-substitute/global
+	   #f "(multipath_component_detection =) [0-9]+" content
+	   'pre 1 " 0" 'post))
+	 (content
+	  (regex:regexp-substitute/global
+	   #f "(md_component_detection =) [0-9]+" content
+	   'pre 1 " 0" 'post))
+	 (content
+	  (regex:regexp-substitute/global
+	   #f "(udev_sync =) [0-9]+" content
+	   'pre 1 " 0" 'post)))
+    (regex:regexp-substitute/global
+     output-port "(udev_rules =) [0-9]+" content
+     'pre 1 " 0" 'post)))
+
 (define* (configure-grub modules #:key zpool rootfs)
   (with-output-to-file (utils:path "" "etc" "default" "grub")
     (lambda ()
@@ -397,24 +416,9 @@ Valid options are:
 		  (copy-file lvm-file lvmbak-file))
 		(call-with-input-file lvmbak-file
 		  (lambda (input-port)
-		    (let* ((content (rdelim:read-string input-port))
-			   (content
-			    (regex:regexp-substitute/global
-			     #f "(multipath_component_detection =) [0-9]+" content
-			     'pre 1 " 0" 'post))
-			   (content
-			    (regex:regexp-substitute/global
-			     #f "(md_component_detection =) [0-9]+" content
-			     'pre 1 " 0" 'post))
-			   (content
-			    (regex:regexp-substitute/global
-			     #f "(udev_sync =) [0-9]+" content
-			     'pre 1 " 0" 'post)))
-		      (call-with-output-file lvm-file
-			(lambda (output-port)
-			  (regex:regexp-substitute/global
-			   output-port "(udev_rules =) [0-9]+" content
-			   'pre 1 " 0" 'post))))))
+		    (call-with-output-file lvm-file
+		      (lambda (output-port)
+			(update-lvm-config input-port output-port)))))
 		(delete-file lvmbak-file))))
 	    (install-kernel-and-grub
 	     arch bootdev (get-grub-modules)
