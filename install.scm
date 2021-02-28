@@ -364,7 +364,10 @@ Valid options are:
 	 pseudofs-dirs)
 	(utils:println "Configuring new Debian system...")
 	(let* ((config-file (utils:path target utils:config-filename))
-	       (config (utils:read-config config-file))
+	       (config
+		(if (file-exists? config-file)
+		    (utils:read-config config-file)
+		    (error "Configuration file doesn't exist!" config-file)))
 	       (rootdev (hash-ref config 'rootdev))
 	       (luks-v2? (hash-ref config 'luksv2))
 	       (bootdev (hash-ref config 'bootdev rootdev))
