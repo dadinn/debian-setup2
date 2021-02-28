@@ -330,7 +330,21 @@ exec guile -e main -s "$0" "$@"
 	 (sudouser (hash-ref options 'sudouser))
 	 (configure-only? (hash-ref options 'configure-only))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
-	 (help? (hash-ref options 'help)))
+	 (help? (hash-ref options 'help))
+	 (config-file (utils:path target utils:config-filename))
+	 (config
+	  (if (file-exists? config-file)
+	      (utils:read-config config-file)
+	      (error "Configuration file doesn't exist!" config-file)))
+	 (rootdev (hash-ref config 'rootdev))
+	 (luks-v2? (hash-ref config 'luksv2))
+	 (bootdev (hash-ref config 'bootdev rootdev))
+	 (uefiboot (hash-ref config 'uefiboot))
+	 (swapsize (hash-ref config 'swapsize))
+	 (swapfiles (hash-ref config 'swapfiles))
+	 (swapfiles (and swapfiles (string->number swapfiles)))
+	 (zpool (hash-ref config 'zpool))
+	 (rootfs (hash-ref config 'rootfs)))
     (cond
      (help?
       (utils:println
@@ -363,18 +377,7 @@ Valid options are:
 	   (system* "mount" "--rbind" (utils:path "" dir) target-path)))
        pseudofs-dirs)
       (utils:println "Configuring new Debian system...")
-      (let* ((config-file (utils:path target utils:config-filename))
-	     (config (utils:read-config config-file))
-	     (rootdev (hash-ref config 'rootdev))
-	     (luks-v2? (hash-ref config 'luksv2))
-	     (bootdev (hash-ref config 'bootdev rootdev))
-	     (uefiboot (hash-ref config 'uefiboot))
-	     (swapsize (hash-ref config 'swapsize))
-	     (swapfiles (hash-ref config 'swapfiles))
-	     (swapfiles (and swapfiles (string->number swapfiles)))
-	     (zpool (hash-ref config 'zpool))
-	     (rootfs (hash-ref config 'rootfs))
-	     (grub-module-store (make-hash-table 1))
+      (let* ((grub-module-store (make-hash-table 1))
 	     (get-grub-modules
 	      (lambda () (hash-ref grub-module-store #:value '())))
 	     (add-grub-module
