@@ -298,6 +298,10 @@ exec guile -e main -s "$0" "$@"
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
+    (bootstrap-only
+     (description
+      "Skip configuring bootstrapped installation, and only do the bootstrapping of the new system")
+     (single-char #\B))
     (configure-only
      (description
       "Skip bootstrapping new system, and only execute configuration steps in chroot environment")
@@ -325,6 +329,7 @@ exec guile -e main -s "$0" "$@"
 	 (hostname (hash-ref options 'hostname))
 	 (sudouser (hash-ref options 'sudouser))
 	 (configure-only? (hash-ref options 'configure-only))
+	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (help? (hash-ref options 'help)))
     (cond
      (help?
@@ -344,15 +349,20 @@ Valid options are:
       (error "Installation target directory doesn't exist!" target))
      ((not hostname)
       (error "Hostname must be specified for the new system!"))
+     ((and bootstrap-only? configure-only?)
+      (error "Both bootstrap-only and configure-only options are used!"))
      (else
       (when (not configure-only?)
-	(bootstrap target arch release mirror))
+	(bootstrap target arch release mirror)
+	(utils:println "Finished bootstrapping Debian system!"))
+      (when bootstrap-only? (exit 0))
       (map
        (lambda (dir)
 	 (let ((target-path (utils:path target dir)))
 	   (when (not (file-exists? target-path)) (mkdir target-path))
 	   (system* "mount" "--rbind" (utils:path "" dir) target-path)))
        pseudofs-dirs)
+      (utils:println "Configuring new Debian system...")
       (let* ((config-file (utils:path target utils:config-filename))
 	     (config (utils:read-config config-file))
 	     (rootdev (hash-ref config 'rootdev))
