@@ -384,6 +384,7 @@ Valid options are:
 	     (pid (primitive-fork)))
 	(cond
 	 ((zero? pid)
+	  (putenv "LANG=C.UTF-8")
 	  (chroot target)
 	  (chdir "/")
 	  (cond
