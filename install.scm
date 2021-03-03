@@ -322,8 +322,8 @@ exec guile -e main -s "$0" "$@"
 	 (locale (hash-ref options 'locale))
 	 (keymap (hash-ref options 'keymap))
 	 (keymap-parts (string-split keymap #\:))
-	 (layout (car keymap-parts))
-	 (variant (cadr keymap-parts))
+	 (keyboard-layout (car keymap-parts))
+	 (keyboard-variant (cadr keymap-parts))
 	 (timezone (hash-ref options 'timezone))
 	 (hostname (hash-ref options 'hostname))
 	 (sudouser (hash-ref options 'sudouser))
@@ -404,10 +404,8 @@ Valid options are:
 	      (configure-locale locale)
 	      (configure-timezone timezone)
 	      (configure-keyboard
-	       #:layout layout
-	       #:variant variant
-	       #:model "pc105"
-	       #:options "ctrl:nocaps")
+	       #:layout keyboard-layout
+	       #:variant keyboard-variant)
 	      (init-sudouser sudouser)
 	      (when rootdev
 		(system* "apt" "install" "-y" "cryptsetup")
