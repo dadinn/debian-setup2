@@ -105,7 +105,7 @@ exec guile -e main -s "$0" "$@"
 
 (define (read-sudouser)
   (utils:println "You can disable root user acount by creating a sudo user instead.")
-  (readline "Type a name for sudo user (or leave empty to keep the root account enabled): "))
+  (readline "Type a name for sudo user (or leave it empty to keep the root account enabled): "))
 
 (define (init-sudouser sudouser)
   (let ((username (or sudouser (read-sudouser))))
