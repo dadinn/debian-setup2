@@ -272,6 +272,13 @@ Valid options are:
 	     (swapfiles (and swapfiles (string->number swapfiles)))
 	     (zpool (hash-ref config 'zpool))
 	     (rootfs (hash-ref config 'rootfs))
+	     (grub-module-store (make-hash-table 1))
+	     (get-grub-modules
+	      (lambda () (hash-ref grub-module-store #:value '())))
+	     (add-grub-module
+	      (lambda (module)
+		(let ((curr (get-grub-modules)))
+		  (hash-set! grub-module-store #:value (cons module curr)))))
 	     (pid (primitive-fork)))
 	(cond
 	 ((zero? pid)
