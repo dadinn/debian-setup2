@@ -122,6 +122,58 @@ exec guile -e main -s "$0" "$@"
       (while (not (zero? (system "passwd")))
 	(utils:println "Passwords don't match! Please try again!"))))))
 
+(define* (configure-grub modules #:key zpool rootfs)
+  (with-output-to-file (utils:path "" "etc" "default" "grub")
+    (lambda ()
+      (display "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"")
+      (newline)
+      (display "GRUB_TERMINAL=\"console\"")
+      (newline)
+      (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules ",") "\""))
+      (newline)
+      (when (member "cryptodisk" modules)
+	(display "GRUB_CRYPTODISK_ENABLE=y")
+	(newline))
+      (when (member "zfs" modules)
+	(display (string-append "GRUB_CMDLINE_LINUX=root=ZFS=" zpool "/" rootfs))
+	(newline)))))
+
+(define* (install-grub bootdev grub-modules #:key uefiboot? zpool rootfs)
+  (setenv "DEBIAN_FRONTEND" "noninteractive")
+  (cond
+   (uefiboot?
+    (system* "apt" "install" "-y" "grub-efi" "xz-utils")
+    (unsetenv "DEBIAN_FRONTEND")
+    (configure-grub
+     grub-modules
+     #:zpool zpool
+     #:rootfs rootfs)
+    (system*
+     "grub-install"
+     "--target=x86_64-efi"
+     "--efi-directory=/boot/efi"
+     "--bootloader-id=debian"
+     "--compress=xz"
+     "--recheck"
+     bootdev))
+   (else
+    (system* "apt" "install" "-y" "grub-pc")
+    (unsetenv "DEBIAN_FRONTEND")
+    (configure-grub
+     grub-modules
+     #:zpool zpool)
+    (system* "grub-install" bootdev))))
+
+(define (install-kernel-image-zfs arch)
+  (let ((release (deps:read-debian-version))
+	(package (string-append "linux-image-" arch)))
+    (cond
+     ((= 8 release)
+      (system* "apt" "install" "-y" "-t" "jessie-backports" package))
+     ((= 10 release)
+      (system* "apt" "install" "-y" "-t" "buster-backports" package))
+     ((<= 9 release)
+      (system* "apt" "install" "-y" package)))))
 
 ;; BOOTSTRAP
 
@@ -297,16 +349,19 @@ Valid options are:
 	     #:options (or options "ctrl:nocaps"))
 	    (init-sudouser sudouser)
 	    (when rootdev
-	      (system* "apt" "install" "-y" "cryptsetup"))
+	      (system* "apt" "install" "-y" "cryptsetup")
+	      (add-grub-module "cryptodisk"))
 	    (cond
 	     (zpool
 	      (deps:install-deps-zfs)
+	      (add-grub-module "zfs")
 	      (system* "systemctl" "enable" "zfs-import-cache.service")
 	      (system* "systemctl" "enable" "zfs-import-cache.target")
 	      (system* "systemctl" "enable" "zfs-mount.service")
 	      (system* "systemctl" "enable" "zfs-mount.target"))
 	     ((zero? swapfiles)
 	      (deps:install-deps-lvm)
+	      (add-grub-module "lvm")
 	      (let* ((lvm-dir (utils:path "" "etc" "lvm"))
 		     (lvm-file (utils:path lvm-dir "lvm.conf"))
 		     (lvmbak-file (string-append lvm-file ".bak")))
@@ -317,10 +372,19 @@ Valid options are:
 		(system* "sed" "-ire" "s|(udev_rules =) [0-9]+|\\1 0|" lvm-file))))
 	    (cond
 	     (zpool
-	      (deps:install-deps-zfs)
-	      (install-grub bootdev uefiboot? arch grub-modules zpool rootfs))
+	      (install-kernel-image-zfs arch)
+	      (install-grub
+	       bootdev (get-grub-modules)
+	       #:uefiboot? uefiboot?
+	       #:zpool zpool
+	       #:rootfs rootfs))
 	     (else
-	      (system* "apt" "install" "-y" (string-append "linux-image-" arch))))))
+	      (system* "apt" "install" "-y" (string-append "linux-image-" arch))
+	      (install-grub
+	       bootdev (get-grub-modules)
+	       #:uefiboot? uefiboot?
+	       #:zpool zpool
+	       #:rootfs rootfs)))))
 	  (primitive-exit 0))
 	 (else
 	  (waitpid pid)
