@@ -124,13 +124,13 @@ exec guile -e main -s "$0" "$@"
      ((not (string-null? username))
       (system* "apt" "install" "-y" "sudo")
       (system* "useradd" "-m" "-G" "sudo" username "-s" "/bin/bash")
-      (utils:println "Set password for sudo user" username "!")
+      (utils:println "Setting password for sudo user" username "...")
       (while (not (zero? (system* "passwd" username)))
 	(utils:println "Passwords don't match! Please try again!"))
       (system* "passwd" "-l" "root")
       (system* "usermod" "-s" "/sbin/nologin" "root"))
      (else
-      (utils:println "Set password for root user!")
+      (utils:println "Setting password for root user...")
       (while (not (zero? (system "passwd")))
 	(utils:println "Passwords don't match! Please try again!"))))))
 
