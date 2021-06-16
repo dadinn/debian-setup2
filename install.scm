@@ -356,13 +356,6 @@ Valid options are:
 	(bootstrap target arch release mirror)
 	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
       (when (not bootstrap-only?)
-	(map
-	 (lambda (dir)
-	   (let ((target-path (utils:path target dir)))
-	     (when (not (file-exists? target-path)) (mkdir target-path))
-	     (system* "mount" "--rbind" (utils:path "" dir) target-path)))
-	 pseudofs-dirs)
-	(utils:println "Configuring new Debian system...")
 	(let* ((config-file (utils:path target utils:config-filename))
 	       (config
 		(if (file-exists? config-file)
@@ -386,8 +379,15 @@ Valid options are:
 	       (pid (primitive-fork)))
 	  (cond
 	   ((zero? pid)
+	    (map
+	     (lambda (dir)
+	       (let ((target-path (utils:path target dir)))
+		 (when (not (file-exists? target-path)) (mkdir target-path))
+		 (system* "mount" "--rbind" (utils:path "" dir) target-path)))
+	     pseudofs-dirs)
 	    (chroot target)
 	    (chdir "/")
+	    (utils:println "Configuring new Debian system...")
 	    (setenv "LANG" "C.UTF-8")
 	    (cond
 	     ((not bootdev)
