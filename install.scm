@@ -311,7 +311,7 @@ exec guile -e main -s "$0" "$@"
      (single-char #\h))))
 
 (define pseudofs-dirs
-  (list "dev" "dev/pts" "sys" "proc" "run"))
+  (list "dev" "sys" "proc" "run"))
 
 (define (main args)
   (let* ((options (utils:getopt-extra args options-spec))
