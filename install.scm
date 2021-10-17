@@ -385,6 +385,7 @@ Valid options are:
 	   ((zero? pid)
 	    (chroot target)
 	    (chdir "/")
+	    (setenv "LANG" "C.UTF-8")
 	    (cond
 	     ((not bootdev)
 	      (error "boot device has to be specified!"))
