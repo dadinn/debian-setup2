@@ -297,6 +297,10 @@ exec guile -e main -s "$0" "$@"
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
+    (bootstrap-only
+     (description
+      "Skip configuring bootstrapped installation, and only do the bootstrapping of the new system.")
+     (single-char #\B))
     (configure-only
      (description
       "Skip bootstrapping new system, and only execute configuration steps in chroot environment.")
@@ -323,6 +327,7 @@ exec guile -e main -s "$0" "$@"
 	 (timezone (hash-ref options 'timezone))
 	 (hostname (hash-ref options 'hostname))
 	 (sudouser (hash-ref options 'sudouser))
+	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
 	 (help? (hash-ref options 'help)))
     (cond
@@ -340,19 +345,24 @@ Valid options are:
       (newline))
      ((not (utils:directory? target))
       (error "Installation target directory doesn't exist!" target))
+     ((and bootstrap-only? configure-only?)
+      (error "Both bootstrap-only and configure-only options are used!"))
      ((not hostname)
       (error "Hostname must be specified for the new system!"))
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
      (else
       (when (not configure-only?)
-	(bootstrap target arch release mirror))
+	(bootstrap target arch release mirror)
+	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
+      (when (not bootstrap-only?)
       (map
        (lambda (dir)
 	 (let ((target-path (utils:path target dir)))
 	   (when (not (file-exists? target-path)) (mkdir target-path))
 	   (system* "mount" "--rbind" (utils:path "" dir) target-path)))
        pseudofs-dirs)
+      (utils:println "Configuring new Debian system...")
       (let* ((config-file (utils:path target utils:config-filename))
 	     (config (utils:read-config config-file))
 	     (rootdev (hash-ref config 'rootdev))
@@ -459,4 +469,4 @@ Valid options are:
 		(system* "zpool" "export" zpool))
 	       (else (system* "umount" target)))
 	      (utils:println "Rebooting system...")
-	      (system* "systemctl" "poweroff")))))))))))
+	      (system* "systemctl" "poweroff"))))))))))))
