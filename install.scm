@@ -347,7 +347,7 @@ Valid options are:
       (error "Installation target directory doesn't exist!" target))
      ((and bootstrap-only? configure-only?)
       (error "Both bootstrap-only and configure-only options are used!"))
-     ((not hostname)
+     ((and (not bootstrap-only?) (not hostname))
       (error "Hostname must be specified for the new system!"))
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
