@@ -356,117 +356,117 @@ Valid options are:
 	(bootstrap target arch release mirror)
 	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
       (when (not bootstrap-only?)
-      (map
-       (lambda (dir)
-	 (let ((target-path (utils:path target dir)))
-	   (when (not (file-exists? target-path)) (mkdir target-path))
-	   (system* "mount" "--rbind" (utils:path "" dir) target-path)))
-       pseudofs-dirs)
-      (utils:println "Configuring new Debian system...")
-      (let* ((config-file (utils:path target utils:config-filename))
-	     (config (utils:read-config config-file))
-	     (rootdev (hash-ref config 'rootdev))
-	     (luks-v2? (hash-ref config 'luksv2))
-	     (bootdev (hash-ref config 'bootdev rootdev))
-	     (uefiboot? (hash-ref config 'uefiboot))
-	     (swapfiles (hash-ref config 'swapfiles))
-	     (swapfiles (and swapfiles (string->number swapfiles)))
-	     (zpool (hash-ref config 'zpool))
-	     (rootfs (hash-ref config 'rootfs))
-	     (grub-module-store (make-hash-table 1))
-	     (get-grub-modules
-	      (lambda () (hash-ref grub-module-store #:value '())))
-	     (add-grub-module
-	      (lambda (module)
-		(let ((curr (get-grub-modules)))
-		  (hash-set! grub-module-store #:value (cons module curr)))))
-	     (pid (primitive-fork)))
-	(cond
-	 ((zero? pid)
-	  (chroot target)
-	  (chdir "/")
+	(map
+	 (lambda (dir)
+	   (let ((target-path (utils:path target dir)))
+	     (when (not (file-exists? target-path)) (mkdir target-path))
+	     (system* "mount" "--rbind" (utils:path "" dir) target-path)))
+	 pseudofs-dirs)
+	(utils:println "Configuring new Debian system...")
+	(let* ((config-file (utils:path target utils:config-filename))
+	       (config (utils:read-config config-file))
+	       (rootdev (hash-ref config 'rootdev))
+	       (luks-v2? (hash-ref config 'luksv2))
+	       (bootdev (hash-ref config 'bootdev rootdev))
+	       (uefiboot? (hash-ref config 'uefiboot))
+	       (swapfiles (hash-ref config 'swapfiles))
+	       (swapfiles (and swapfiles (string->number swapfiles)))
+	       (zpool (hash-ref config 'zpool))
+	       (rootfs (hash-ref config 'rootfs))
+	       (grub-module-store (make-hash-table 1))
+	       (get-grub-modules
+		(lambda () (hash-ref grub-module-store #:value '())))
+	       (add-grub-module
+		(lambda (module)
+		  (let ((curr (get-grub-modules)))
+		    (hash-set! grub-module-store #:value (cons module curr)))))
+	       (pid (primitive-fork)))
 	  (cond
-	   ((not bootdev)
-	    (error "boot device has to be specified!"))
-	   ((not (utils:block-device? bootdev))
-	    (error "boot device has to be a block device!" bootdev))
-	   ((and luks-v2? (<= 10 (or (deps:read-debian-version) 0)))
-	    (error "LUKS format version 2 is only supported in Debian Buster or later!"))
-	   (else
-	    (init-apt)
-	    (init-network)
-	    (init-hostname hostname)
-	    (configure-hosts hostname)
-	    (configure-locale locale)
-	    (configure-timezone timezone)
-	    (configure-keyboard
-	     #:layout layout
-	     #:variant variant
-	     #:model "pc105"
-	     #:options "ctrl:nocaps")
-	    (init-sudouser sudouser)
-	    (when rootdev
-	      (system* "apt" "install" "-y" "cryptsetup")
-	      (add-grub-module "cryptodisk"))
+	   ((zero? pid)
+	    (chroot target)
+	    (chdir "/")
 	    (cond
-	     (zpool
-	      (deps:install-deps-zfs)
-	      (add-grub-module "zfs")
-	      (system* "systemctl" "enable" "zfs-import-cache.service")
-	      (system* "systemctl" "enable" "zfs-import-cache.target")
-	      (system* "systemctl" "enable" "zfs-mount.service")
-	      (system* "systemctl" "enable" "zfs-mount.target"))
-	     ((zero? swapfiles)
-	      (deps:install-deps-lvm)
-	      (add-grub-module "lvm")
-	      (let* ((lvm-dir (utils:path "" "etc" "lvm"))
-		     (lvm-file (utils:path lvm-dir "lvm.conf"))
-		     (lvmbak-file (string-append lvm-file ".bak")))
-		(when (not (file-exists? lvmbak-file))
-		  (copy-file lvm-file lvmbak-file))
-		(call-with-input-file lvmbak-file
-		  (lambda (input-port)
-		    (call-with-output-file lvm-file
-		      (lambda (output-port)
-			(update-lvm-config input-port output-port)))))
-		(delete-file lvmbak-file))))
-	    (install-kernel-and-grub
-	     arch bootdev (get-grub-modules)
-	     #:uefiboot? uefiboot?
-	     #:zpool zpool
-	     #:rootfs rootfs)))
-	  (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
-	  (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
-	    (cond
-	     ((regex:string-match "[yY]" resp)
-	      (delete-file (utils:path "" utils:config-filename))
-	      (utils:println "Removed" utils:config-filename "!"))
+	     ((not bootdev)
+	      (error "boot device has to be specified!"))
+	     ((not (utils:block-device? bootdev))
+	      (error "boot device has to be a block device!" bootdev))
+	     ((and luks-v2? (<= 10 (or (deps:read-debian-version) 0)))
+	      (error "LUKS format version 2 is only supported in Debian Buster or later!"))
 	     (else
-	      (utils:println "Skipped cleaning up configuration script and temporary files."))))
-	  (primitive-exit 0))
-	 (else
-	  (waitpid pid)
-	  (map
-	   (lambda (dir)
-	     (system* "umount" "-Rlf" (utils:path target dir)))
-	   (reverse pseudofs-dirs))
-	  (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")
-	  (let ((resp (readline "Ready to finish installation and reboot the system? [Y/n]")))
-	    (cond
-	     ((regex:string-match "[nN]" resp)
-	      (utils:println "Skipped executing finishing steps!"))
-	     (else
-	      (utils:println "Unmounting installation directories...")
-	      (when uefiboot?
-		(system* "umount" (utils:path target "boot" "efi")))
-	      (system* "umount" (utils:path target "boot"))
+	      (init-apt)
+	      (init-network)
+	      (init-hostname hostname)
+	      (configure-hosts hostname)
+	      (configure-locale locale)
+	      (configure-timezone timezone)
+	      (configure-keyboard
+	       #:layout layout
+	       #:variant variant
+	       #:model "pc105"
+	       #:options "ctrl:nocaps")
+	      (init-sudouser sudouser)
+	      (when rootdev
+		(system* "apt" "install" "-y" "cryptsetup")
+		(add-grub-module "cryptodisk"))
 	      (cond
 	       (zpool
-		(system* "zfs" "umount" "-a")
-		(let ((root-dataset (utils:path zpool rootfs)))
-		  (system* "zfs" "set" "mountpoint=/" root-dataset)
-		  (system* "zfs" "snapshot" (string-append root-dataset "@install")))
-		(system* "zpool" "export" zpool))
-	       (else (system* "umount" target)))
-	      (utils:println "Rebooting system...")
-	      (system* "systemctl" "poweroff"))))))))))))
+		(deps:install-deps-zfs)
+		(add-grub-module "zfs")
+		(system* "systemctl" "enable" "zfs-import-cache.service")
+		(system* "systemctl" "enable" "zfs-import-cache.target")
+		(system* "systemctl" "enable" "zfs-mount.service")
+		(system* "systemctl" "enable" "zfs-mount.target"))
+	       ((zero? swapfiles)
+		(deps:install-deps-lvm)
+		(add-grub-module "lvm")
+		(let* ((lvm-dir (utils:path "" "etc" "lvm"))
+		       (lvm-file (utils:path lvm-dir "lvm.conf"))
+		       (lvmbak-file (string-append lvm-file ".bak")))
+		  (when (not (file-exists? lvmbak-file))
+		    (copy-file lvm-file lvmbak-file))
+		  (call-with-input-file lvmbak-file
+		    (lambda (input-port)
+		      (call-with-output-file lvm-file
+			(lambda (output-port)
+			  (update-lvm-config input-port output-port)))))
+		  (delete-file lvmbak-file))))
+	      (install-kernel-and-grub
+	       arch bootdev (get-grub-modules)
+	       #:uefiboot? uefiboot?
+	       #:zpool zpool
+	       #:rootfs rootfs)))
+	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
+	    (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
+	      (cond
+	       ((regex:string-match "[yY]" resp)
+		(delete-file (utils:path "" utils:config-filename))
+		(utils:println "Removed" utils:config-filename "!"))
+	       (else
+		(utils:println "Skipped cleaning up configuration script and temporary files."))))
+	    (primitive-exit 0))
+	   (else
+	    (waitpid pid)
+	    (map
+	     (lambda (dir)
+	       (system* "umount" "-Rlf" (utils:path target dir)))
+	     (reverse pseudofs-dirs))
+	    (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")
+	    (let ((resp (readline "Ready to finish installation and reboot the system? [Y/n]")))
+	      (cond
+	       ((regex:string-match "[nN]" resp)
+		(utils:println "Skipped executing finishing steps!"))
+	       (else
+		(utils:println "Unmounting installation directories...")
+		(when uefiboot?
+		  (system* "umount" (utils:path target "boot" "efi")))
+		(system* "umount" (utils:path target "boot"))
+		(cond
+		 (zpool
+		  (system* "zfs" "umount" "-a")
+		  (let ((root-dataset (utils:path zpool rootfs)))
+		    (system* "zfs" "set" "mountpoint=/" root-dataset)
+		    (system* "zfs" "snapshot" (string-append root-dataset "@install")))
+		  (system* "zpool" "export" zpool))
+		 (else (system* "umount" target)))
+		(utils:println "Rebooting system...")
+		(system* "systemctl" "poweroff"))))))))))))
