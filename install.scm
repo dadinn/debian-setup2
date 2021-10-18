@@ -34,7 +34,7 @@ exec guile -e main -s "$0" "$@"
       (lambda ()
 	(utils:println "auto" "lo")
 	(utils:println "iface" "lo" "inet" "loopback")))
-    (map
+    (for-each
      (lambda (dev)
        (with-output-to-file (utils:path interfaces-dir dev)
 	 (lambda ()
@@ -379,7 +379,7 @@ Valid options are:
 	       (pid (primitive-fork)))
 	  (cond
 	   ((zero? pid)
-	    (map
+	    (for-each
 	     (lambda (dir)
 	       (let ((target-path (utils:path target dir)))
 		 (when (not (file-exists? target-path)) (mkdir target-path))
@@ -448,7 +448,7 @@ Valid options are:
 	    (primitive-exit 0))
 	   (else
 	    (waitpid pid)
-	    (map
+	    (for-each
 	     (lambda (dir)
 	       (system* "umount" "-Rlf" (utils:path target dir)))
 	     (reverse pseudofs-dirs))
