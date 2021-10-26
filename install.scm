@@ -15,7 +15,8 @@ exec guile -e main -s "$0" "$@"
  ((ice-9 rdelim) #:prefix rdelim:)
  ((ice-9 popen) #:prefix popen:)
  ((ice-9 pretty-print) #:prefix pp:)
- ((srfi srfi-1) #:prefix srfi1:))
+ ((srfi srfi-1) #:prefix srfi1:)
+ ((web uri) #:select (string->uri uri-host)))
 
 ;;; CONFIGURE
 
@@ -438,6 +439,42 @@ Valid options are:
 	       #:uefiboot? uefiboot?
 	       #:zpool zpool
 	       #:rootfs rootfs)))
+	    (when (equal? "localhost" (uri-host (string->uri mirror)))
+	      (let* ((new-file "/etc/apt/sources.list")
+		     (old-file (string-append new-file ".old")))
+		(utils:move-file new-file old-file)
+		(call-with-input-file old-file
+		  (lambda (input-port)
+		    (call-with-output-file new-file
+		      (lambda (output-port)
+			(let* ((pattern
+				(make-regexp
+				 "^deb ([^ ]+) ([^ ]+) (.+)$"
+				 regexp/newline))
+			       (result (rdelim:read-string input-port))
+			       (result (regexp-exec pattern result))
+			       (components (regex:match:substring result 3)))
+			  (regex:regexp-substitute output-port result "#
+# This system was installed using a locally hosted apt mirror.
+# The below source entry was disabled at the end of the installation
+# process. For information about how to configure apt package sources,
+# see the sources.list(5) manual.
+
+# " 0 'post)
+			  (newline output-port)
+			  (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
+				  release components)
+			  (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
+				  release components)
+			  (format output-port "deb http://security.debian.org/debian-security ~A ~A\n"
+				  (string-append release "-security") components)
+			  (format output-port "deb-src http://security.debian.org/debian-security ~A ~A\n"
+				  (string-append release "-security") components)
+			  (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
+				  (string-append release "-updates") components)
+			  (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
+				  (string-append release "-updates") components))))))
+		(delete-file old-file)))
 	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
 	    (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
 	      (cond
