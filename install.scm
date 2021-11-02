@@ -323,6 +323,11 @@ https://github.com/openzfs/zfs/blob/master/LICENSE"))
     (finalise
      (description
       "Prepare the new system to be ready for reboot, by removing temporary files, unmounting filesystems, and executing finishing steps."))
+    (unattended
+     (description
+      "Runs script in unattended mode. Requires password to be specified.
+Toggles options skip-sudouser-prompt, accept-openzfs-license, finalise.")
+     (single-char #\A))
     (bootstrap-only
      (description
       "Skip configuring bootstrapped installation, and only do the bootstrapping of the new system.")
@@ -355,9 +360,13 @@ https://github.com/openzfs/zfs/blob/master/LICENSE"))
 	 (hostname (hash-ref options 'hostname))
 	 (password (hash-ref options 'password))
 	 (sudouser (hash-ref options 'sudouser))
+	 (unattended? (hash-ref options 'unattended))
 	 (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
+	 (skip-sudouser-prompt? (not (equal? skip-sudouser-prompt? unattended?)))
 	 (accept-openzfs-license? (hash-ref options 'accept-openzfs-license))
+	 (accept-openzfs-license? (not (equal? accept-openzfs-license? unattended?)))
 	 (finalise? (hash-ref options 'finalise))
+	 (finalise? (not (equal? finalise? unattended?)))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
 	 (help? (hash-ref options 'help)))
@@ -383,6 +392,8 @@ Valid options are:
       (error "Both bootstrap-only and configure-only options are used!"))
      ((and (not bootstrap-only?) (not hostname))
       (error "Hostname must be specified for the new system!"))
+     ((and unattended? (not password))
+      (error "Password must be specified when using unattended mode!"))
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
      (else
