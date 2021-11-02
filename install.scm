@@ -293,6 +293,11 @@ exec guile -e main -s "$0" "$@"
      (description "Hostname of the new system. Should conform to RFC 1123.")
      (value-arg "hostname")
      (value #t))
+    (password
+     (single-char #\p)
+     (description "Password for root, or sudouser (if specified).")
+     (value-arg "PASSWORD")
+     (value #t))
     (sudouser
      (single-char #\s)
      (description "Name for the sudo user to be used instead of root")
@@ -331,6 +336,7 @@ exec guile -e main -s "$0" "$@"
 	 (keyboard-variant (cadr keymap-parts))
 	 (timezone (hash-ref options 'timezone))
 	 (hostname (hash-ref options 'hostname))
+	 (password (hash-ref options 'password))
 	 (sudouser (hash-ref options 'sudouser))
 	 (finalise? (hash-ref options 'finalise))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
