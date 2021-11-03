@@ -120,21 +120,22 @@ exec guile -e main -s "$0" "$@"
   (utils:println "You can disable root user account by creating a sudo user instead.")
   (readline "Type a name for sudo user (or leave it empty to keep the root account enabled): "))
 
+(define (set-password username)
+  (format #t "Setting password for user ~A..." username)
+  (while (not (zero? (system* "passwd" username)))
+    (utils:println "Passwords don't match! Please try again!")))
+
 (define (init-sudouser sudouser)
   (let ((username (or sudouser (read-sudouser))))
     (cond
      ((not (string-null? username))
       (system* "apt" "install" "-y" "sudo")
       (system* "useradd" "-m" "-G" "sudo" username "-s" "/bin/bash")
-      (utils:println "Setting password for sudo user" username "...")
-      (while (not (zero? (system* "passwd" username)))
-	(utils:println "Passwords don't match! Please try again!"))
+      (set-password username)
       (system* "passwd" "-l" "root")
       (system* "usermod" "-s" "/sbin/nologin" "root"))
      (else
-      (utils:println "Setting password for root user...")
-      (while (not (zero? (system "passwd")))
-	(utils:println "Passwords don't match! Please try again!"))))))
+      (set-password "root")))))
 
 (define (update-lvm-config input-port output-port)
   "Update LVM configuration to disable udev synchronisation"
