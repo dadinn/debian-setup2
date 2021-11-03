@@ -122,12 +122,16 @@ exec guile -e main -s "$0" "$@"
   (utils:println "You can disable root user account by creating a sudo user instead.")
   (readline "Type a name for sudo user (or leave it empty to keep the root account enabled): "))
 
-(define (set-password username)
+(define* (set-password username #:optional password)
   (format #t "Setting password for user ~A..." username)
-  (while (not (zero? (system* "passwd" username)))
-    (utils:println "Passwords don't match! Please try again!")))
+  (if password
+   (let ((output-port (popen:open-pipe* OPEN_WRITE "passwd" "-q" username)))
+     (format output-port "~A\n~A" password password)
+     (popen:close-pipe output-port))
+   (while (not (zero? (system* "passwd" username)))
+     (utils:println "Passwords don't match! Please try again!"))))
 
-(define* (init-sudouser sudouser #:key skip-prompt?)
+(define* (init-sudouser sudouser #:key password skip-prompt?)
   (let ((username
 	 (or sudouser
 	  (if (not skip-prompt?)
@@ -137,11 +141,11 @@ exec guile -e main -s "$0" "$@"
      ((not (string-null? username))
       (system* "apt" "install" "-y" "sudo")
       (system* "useradd" "-m" "-G" "sudo" username "-s" "/bin/bash")
-      (set-password username)
+      (set-password username password)
       (system* "passwd" "-l" "root")
       (system* "usermod" "-s" "/sbin/nologin" "root"))
      (else
-      (set-password "root")))))
+      (set-password "root" password)))))
 
 (define (update-lvm-config input-port output-port)
   "Update LVM configuration to disable udev synchronisation"
@@ -431,7 +435,8 @@ Valid options are:
 	       #:layout keyboard-layout
 	       #:variant keyboard-variant)
 	      (init-sudouser sudouser
-	       #:skip-prompt? skip-sudouser-prompt?)
+	       #:skip-prompt? skip-sudouser-prompt?
+	       #:password password)
 	      (when rootdev
 		(system* "apt" "install" "-y" "cryptsetup")
 		(add-grub-module "cryptodisk"))
