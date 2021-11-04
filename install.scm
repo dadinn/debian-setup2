@@ -92,7 +92,7 @@ exec guile -e main -s "$0" "$@"
      (else
       (error "Zonefile does not exist!" zone-file)))))
 
-(define* (configure-keyboard #:key layout variant model options)
+(define* (configure-keyboard #:key layout variant model options skip-check?)
   (setenv "DEBIAN_FRONTEND" "noninteractive")
   (system* "apt" "install" "-y" "console-setup")
   (unsetenv "DEBIAN_FRONTEND")
@@ -110,7 +110,9 @@ exec guile -e main -s "$0" "$@"
       (newline)))
   (system "setupcon")
   (utils:println "Verifying keyboard layout...")
-  (let ((resp (readline "Please type \"Hello#123\" here: ")))
+  (let ((resp
+	 (if skip-check? "Hello#123"
+	  (readline "Please type \"Hello#123\" here: "))))
     (when (not (string= resp "Hello#123"))
       (utils:println "CHECK FAILED!!!")
       (utils:println "Falling back to manual keyboard configuration...")
@@ -417,6 +419,7 @@ Valid options are:
 	      (configure-locale locale)
 	      (configure-timezone timezone)
 	      (configure-keyboard
+	       #:skip-check? password
 	       #:layout keyboard-layout
 	       #:variant keyboard-variant)
 	      (init-sudouser sudouser)
