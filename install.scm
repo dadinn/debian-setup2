@@ -127,8 +127,12 @@ exec guile -e main -s "$0" "$@"
   (while (not (zero? (system* "passwd" username)))
     (utils:println "Passwords don't match! Please try again!")))
 
-(define (init-sudouser sudouser)
-  (let ((username (or sudouser (read-sudouser))))
+(define* (init-sudouser sudouser #:key skip-prompt?)
+  (let ((username
+	 (or sudouser
+	  (if (not skip-prompt?)
+	   (read-sudouser)
+	   ""))))
     (cond
      ((not (string-null? username))
       (system* "apt" "install" "-y" "sudo")
@@ -426,7 +430,8 @@ Valid options are:
 	       #:skip-check? password
 	       #:layout keyboard-layout
 	       #:variant keyboard-variant)
-	      (init-sudouser sudouser)
+	      (init-sudouser sudouser
+	       #:skip-prompt? skip-sudouser-prompt?)
 	      (when rootdev
 		(system* "apt" "install" "-y" "cryptsetup")
 		(add-grub-module "cryptodisk"))
