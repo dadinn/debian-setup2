@@ -298,6 +298,9 @@ exec guile -e main -s "$0" "$@"
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
+    (finalise
+     (description
+      "Prepare the new system to be ready for reboot, by removing temporary files, unmounting filesystems, and executing finishing steps."))
     (bootstrap-only
      (description
       "Skip configuring bootstrapped installation, and only do the bootstrapping of the new system.")
@@ -329,6 +332,7 @@ exec guile -e main -s "$0" "$@"
 	 (timezone (hash-ref options 'timezone))
 	 (hostname (hash-ref options 'hostname))
 	 (sudouser (hash-ref options 'sudouser))
+	 (finalise? (hash-ref options 'finalise))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
 	 (help? (hash-ref options 'help)))
