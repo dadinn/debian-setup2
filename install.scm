@@ -306,6 +306,9 @@ exec guile -e main -s "$0" "$@"
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
+    (skip-sudouser-prompt
+     (description
+      "When sudouser option is not specified, skip prompt asking for sudo username and automatically configure the root user password instead."))
     (finalise
      (description
       "Prepare the new system to be ready for reboot, by removing temporary files, unmounting filesystems, and executing finishing steps."))
@@ -341,6 +344,7 @@ exec guile -e main -s "$0" "$@"
 	 (hostname (hash-ref options 'hostname))
 	 (password (hash-ref options 'password))
 	 (sudouser (hash-ref options 'sudouser))
+	 (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
 	 (finalise? (hash-ref options 'finalise))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
