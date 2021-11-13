@@ -317,6 +317,9 @@ exec guile -e main -s "$0" "$@"
     (skip-sudouser-prompt
      (description
       "When sudouser option is not specified, skip prompt asking for sudo username and automatically configure the root user password instead."))
+    (accept-openzfs-license
+     (description "Confirm OpenZFS License (CDDL) automatically:
+https://github.com/openzfs/zfs/blob/master/LICENSE"))
     (finalise
      (description
       "Prepare the new system to be ready for reboot, by removing temporary files, unmounting filesystems, and executing finishing steps."))
@@ -353,6 +356,7 @@ exec guile -e main -s "$0" "$@"
 	 (password (hash-ref options 'password))
 	 (sudouser (hash-ref options 'sudouser))
 	 (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
+	 (accept-openzfs-license? (hash-ref options 'accept-openzfs-license))
 	 (finalise? (hash-ref options 'finalise))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
@@ -442,7 +446,7 @@ Valid options are:
 		(add-grub-module "cryptodisk"))
 	      (cond
 	       (zpool
-		(deps:install-deps-zfs)
+		(deps:install-deps-zfs accept-openzfs-license?)
 		(add-grub-module "zfs")
 		(system* "systemctl" "enable" "zfs-import-cache.service")
 		(system* "systemctl" "enable" "zfs-import-cache.target")
