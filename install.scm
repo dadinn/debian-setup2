@@ -155,7 +155,7 @@ exec guile -e main -s "$0" "$@"
      output-port "(udev_rules =) [0-9]+" content
      'pre 1 " 0" 'post)))
 
-(define* (configure-grub modules #:key zpool rootfs)
+(define* (configure-grub modules #:key zpool zroot)
   (with-output-to-file (utils:path "" "etc" "default" "grub")
     (lambda ()
       (display "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"")
@@ -168,14 +168,14 @@ exec guile -e main -s "$0" "$@"
 	(display "GRUB_CRYPTODISK_ENABLE=y")
 	(newline))
       (when (member "zfs" modules)
-	(display (string-append "GRUB_CMDLINE_LINUX=root=ZFS=" zpool "/" rootfs))
+	(display (string-append "GRUB_CMDLINE_LINUX=root=ZFS=" zpool "/" zroot))
 	(newline)))))
 
 (define (file-tree-missing? root-dir filename)
   (ftw root-dir (lambda (path info flag)
     (not (and (eqv? flag 'regular) (string= (basename path) filename))))))
 
-(define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool rootfs)
+(define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool zroot)
   ;; KERNEL
   (let ((release (deps:read-debian-version))
 	(package (string-append "linux-image-" arch)))
@@ -197,7 +197,7 @@ exec guile -e main -s "$0" "$@"
     (configure-grub
      grub-modules
      #:zpool zpool
-     #:rootfs rootfs)
+     #:zroot zroot)
     (system*
      "grub-install"
      "--target=x86_64-efi"
@@ -212,7 +212,7 @@ exec guile -e main -s "$0" "$@"
     (configure-grub
      grub-modules
      #:zpool zpool
-     #:rootfs rootfs)
+     #:zroot zroot)
     (system* "grub-install" bootdev)))
   (system "update-grub")
   (when (and zpool (file-tree-missing? (utils:path "" "boot" "grub") "zfs.mod"))
@@ -370,7 +370,7 @@ Valid options are:
 	       (swapfiles (hash-ref config 'swapfiles))
 	       (swapfiles (and swapfiles (string->number swapfiles)))
 	       (zpool (hash-ref config 'zpool))
-	       (rootfs (hash-ref config 'rootfs))
+	       (zroot (hash-ref config 'zroot))
 	       (grub-module-store (make-hash-table 1))
 	       (get-grub-modules
 		(lambda () (hash-ref grub-module-store #:value '())))
@@ -438,7 +438,7 @@ Valid options are:
 	       arch bootdev (get-grub-modules)
 	       #:uefiboot? uefiboot?
 	       #:zpool zpool
-	       #:rootfs rootfs)))
+	       #:zroot zroot)))
 	    (when (equal? "localhost" (uri-host (string->uri mirror)))
 	      (let* ((new-file "/etc/apt/sources.list")
 		     (old-file (string-append new-file ".old")))
@@ -503,7 +503,7 @@ Valid options are:
 		(cond
 		 (zpool
 		  (system* "zfs" "umount" "-a")
-		  (let ((root-dataset (utils:path zpool rootfs)))
+		  (let ((root-dataset (utils:path zpool zroot)))
 		    (system* "zfs" "set" "mountpoint=/" root-dataset)
 		    (system* "zfs" "snapshot" (string-append root-dataset "@install")))
 		  (system* "zpool" "export" zpool))
