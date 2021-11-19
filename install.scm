@@ -277,7 +277,7 @@ exec guile -e main -s "$0" "$@"
      (description
       "Debian release to install")
      (single-char #\r)
-     (default "buster")
+     (default "bullseye")
      (value-arg "name")
      (value #t))
     (arch
