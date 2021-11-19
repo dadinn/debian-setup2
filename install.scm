@@ -265,7 +265,7 @@ exec guile -e main -s "$0" "$@"
      (description
       "Debian mirror URL to bootstrap from. See the list of mirrors at http://www.debian.org/mirror/list")
      (single-char #\m)
-     (default "http://ftp.uk.debian.org/debian/")
+     (default "http://deb.debian.org/debian")
      (value-arg "url")
      (value #t))
     (locale
