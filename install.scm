@@ -343,6 +343,7 @@ Bootstraps Debian in the target directory, and then configures the new system un
 Valid options are:
 
 " (utils:usage options-spec)))
+      (newline)
       (newline))
      ((not (utils:directory? target))
       (error "Installation target directory doesn't exist!" target))
