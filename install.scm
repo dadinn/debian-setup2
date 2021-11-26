@@ -328,7 +328,7 @@ exec guile -e main -s "$0" "$@"
      (value-arg "PASSWORD")
      (value #t))
     (sudouser
-     (single-char #\s)
+     (single-char #\u)
      (description "Name for the sudo user to be used instead of root")
      (value-arg "username")
      (value #t))
