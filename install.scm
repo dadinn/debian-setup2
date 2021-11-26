@@ -171,15 +171,23 @@ exec guile -e main -s "$0" "$@"
     (lambda ()
       (display "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"")
       (newline)
-      (display "GRUB_TERMINAL=\"console\"")
-      (newline)
+      (let ((cmdline-linux-args
+	     (append
+	      (if (not (and (member "zfs" modules) zpool zroot)) '()
+	       (list (string-append "root=ZFS=" zpool "/" zroot)))
+	      (if (not serial-only?) '()
+	       (list "console=ttyS0,115200")))))
+	(when (not (null? cmdline-linux-args))
+	  (format #t "GRUB_CMDLINE_LINUX=\"~A\""
+	   (string-join cmdline-linux-args " "))
+	  (newline)))
+      (when serial-only?
+	(display "GRUB_TERMINAL=\"console serial\"")
+	(newline))
       (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules ",") "\""))
       (newline)
       (when (member "cryptodisk" modules)
 	(display "GRUB_CRYPTODISK_ENABLE=y")
-	(newline))
-      (when (member "zfs" modules)
-	(display (string-append "GRUB_CMDLINE_LINUX=root=ZFS=" zpool "/" zroot))
 	(newline)))))
 
 (define (file-tree-missing? root-dir filename)
