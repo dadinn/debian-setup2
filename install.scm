@@ -166,7 +166,7 @@ exec guile -e main -s "$0" "$@"
      output-port "(udev_rules =) [0-9]+" content
      'pre 1 " 0" 'post)))
 
-(define* (configure-grub modules #:key zpool zroot)
+(define* (configure-grub modules #:key zpool zroot serial-only?)
   (with-output-to-file (utils:path "" "etc" "default" "grub")
     (lambda ()
       (display "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"")
@@ -186,7 +186,7 @@ exec guile -e main -s "$0" "$@"
   (ftw root-dir (lambda (path info flag)
     (not (and (eqv? flag 'regular) (string= (basename path) filename))))))
 
-(define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool zroot)
+(define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool zroot serial-only?)
   ;; KERNEL
   (let ((release (deps:read-debian-version))
 	(package (string-append "linux-image-" arch)))
@@ -208,7 +208,9 @@ exec guile -e main -s "$0" "$@"
     (configure-grub
      grub-modules
      #:zpool zpool
-     #:zroot zroot)
+     #:zroot zroot
+     #:serial-only?
+     serial-only?)
     (system*
      "grub-install"
      "--target=x86_64-efi"
@@ -223,7 +225,9 @@ exec guile -e main -s "$0" "$@"
     (configure-grub
      grub-modules
      #:zpool zpool
-     #:zroot zroot)
+     #:zroot zroot
+     #:serial-only?
+     serial-only?)
     (system* "grub-install" bootdev)))
   (system "update-grub")
   (when (and zpool (file-tree-missing? (utils:path "" "boot" "grub") "zfs.mod"))
@@ -299,6 +303,10 @@ exec guile -e main -s "$0" "$@"
      (default "Europe/London")
      (value-arg "timezone")
      (value #t))
+    (serial-only
+     (single-char #\S)
+     (description
+      "Disable graphics, and only configure serial console in Linux kernel and GRUB."))
     (hostname
      (single-char #\n)
      (description "Hostname of the new system. Should conform to RFC 1123.")
@@ -362,6 +370,7 @@ Toggles the finalise option.")
 	 (keyboard-layout (car keymap-parts))
 	 (keyboard-variant (cadr keymap-parts))
 	 (timezone (hash-ref options 'timezone))
+	 (serial-only? (hash-ref options 'serial-only))
 	 (hostname (hash-ref options 'hostname))
 	 (password (hash-ref options 'password))
 	 (sudouser (hash-ref options 'sudouser))
@@ -491,7 +500,9 @@ Valid options are:
 	       arch bootdev (get-grub-modules)
 	       #:uefiboot? uefiboot?
 	       #:zpool zpool
-	       #:zroot zroot)))
+	       #:zroot zroot
+	       #:serial-only?
+	       serial-only?)))
 	    (when (equal? "localhost" (uri-host (string->uri mirror)))
 	      (let* ((new-file "/etc/apt/sources.list")
 		     (old-file (string-append new-file ".old")))
