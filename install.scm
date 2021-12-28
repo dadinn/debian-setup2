@@ -24,8 +24,8 @@ exec guile -e main -s "$0" "$@"
   (let ((aptconf-dir (utils:path "" "etc" "apt" "apt.conf.d")))
     (with-output-to-file (utils:path aptconf-dir "norecommends")
       (lambda ()
-	(utils:println "APT::Get::Install-Recommends \"false\";")
-	(utils:println "APT::Get::Install-Suggests \"false\";"))))
+        (utils:println "APT::Get::Install-Recommends \"false\";")
+        (utils:println "APT::Get::Install-Suggests \"false\";"))))
   (system* "apt" "update")
   (system* "apt" "full-upgrade" "-y"))
 
@@ -33,14 +33,14 @@ exec guile -e main -s "$0" "$@"
   (let ((interfaces-dir (utils:path "" "etc" "network" "interfaces.d")))
     (with-output-to-file (utils:path interfaces-dir "lo")
       (lambda ()
-	(utils:println "auto" "lo")
-	(utils:println "iface" "lo" "inet" "loopback")))
+        (utils:println "auto" "lo")
+        (utils:println "iface" "lo" "inet" "loopback")))
     (for-each
      (lambda (dev)
        (with-output-to-file (utils:path interfaces-dir dev)
-	 (lambda ()
-	   (utils:println "auto" dev)
-	   (utils:println "iface" dev "inet" "dhcp"))))
+         (lambda ()
+           (utils:println "auto" dev)
+           (utils:println "iface" dev "inet" "dhcp"))))
      (filter
       (lambda (dev) (regex:string-match "en[a-z0-9]+" dev))
       (string-split (utils:system->string* "ls" (utils:path "" "sys" "class" "net")) #\newline)))))
@@ -60,19 +60,19 @@ exec guile -e main -s "$0" "$@"
 (define (configure-locale locale)
   (system* "apt" "install" "-y" "locales")
   (let* ((locales-file (utils:path "" "etc" "locale.gen"))
-	 (bak-file (string-append locales-file ".bak")))
+         (bak-file (string-append locales-file ".bak")))
     (when (not (file-exists? bak-file))
       (copy-file locales-file bak-file))
     (when (file-exists? bak-file)
       (call-with-input-file bak-file
-	(lambda (input-port)
-	  (let* ((content (rdelim:read-string input-port))
-		 (pattern (string-append "# (" locale " .*)$")))
-	    (call-with-output-file locales-file
-	      (lambda (output-port)
-		(regex:regexp-substitute/global
-		 output-port pattern content
-		 'pre 1 'post))))))
+        (lambda (input-port)
+          (let* ((content (rdelim:read-string input-port))
+                 (pattern (string-append "# (" locale " .*)$")))
+            (call-with-output-file locales-file
+              (lambda (output-port)
+                (regex:regexp-substitute/global
+                 output-port pattern content
+                 'pre 1 'post))))))
       (delete-file bak-file)))
   (system "locale-gen"))
 
@@ -82,11 +82,11 @@ exec guile -e main -s "$0" "$@"
   (unsetenv "DEBIAN_FRONTEND")
   (utils:println "Configuring timezone:" timezone "...")
   (let ((zone-file (utils:path "" "usr" "share" "zoneinfo" timezone))
-	(localtime-file (utils:path "" "etc" "localtime")))
+        (localtime-file (utils:path "" "etc" "localtime")))
     (cond
      ((file-exists? zone-file)
       (when (file-exists? localtime-file)
-	(delete-file localtime-file))
+        (delete-file localtime-file))
       (symlink zone-file localtime-file)
       (system* "dpkg-reconfigure" "-f" "noninteractive" "tzdata"))
      (else
@@ -111,8 +111,8 @@ exec guile -e main -s "$0" "$@"
   (system "setupcon")
   (utils:println "Verifying keyboard layout...")
   (let ((resp
-	 (if skip-check? "Hello#123"
-	  (readline "Please type \"Hello#123\" here: "))))
+         (if skip-check? "Hello#123"
+          (readline "Please type \"Hello#123\" here: "))))
     (when (not (string= resp "Hello#123"))
       (utils:println "CHECK FAILED!!!")
       (utils:println "Falling back to manual keyboard configuration...")
@@ -133,10 +133,10 @@ exec guile -e main -s "$0" "$@"
 
 (define* (init-sudouser sudouser #:key password skip-prompt?)
   (let ((username
-	 (or sudouser
-	  (if (not skip-prompt?)
-	   (read-sudouser)
-	   ""))))
+         (or sudouser
+          (if (not skip-prompt?)
+           (read-sudouser)
+           ""))))
     (cond
      ((not (string-null? username))
       (system* "apt" "install" "-y" "sudo")
@@ -149,18 +149,18 @@ exec guile -e main -s "$0" "$@"
 (define (update-lvm-config input-port output-port)
   "Update LVM configuration to disable udev synchronisation"
   (let* ((content (rdelim:read-string input-port))
-	 (content
-	  (regex:regexp-substitute/global
-	   #f "(multipath_component_detection =) [0-9]+" content
-	   'pre 1 " 0" 'post))
-	 (content
-	  (regex:regexp-substitute/global
-	   #f "(md_component_detection =) [0-9]+" content
-	   'pre 1 " 0" 'post))
-	 (content
-	  (regex:regexp-substitute/global
-	   #f "(udev_sync =) [0-9]+" content
-	   'pre 1 " 0" 'post)))
+         (content
+          (regex:regexp-substitute/global
+           #f "(multipath_component_detection =) [0-9]+" content
+           'pre 1 " 0" 'post))
+         (content
+          (regex:regexp-substitute/global
+           #f "(md_component_detection =) [0-9]+" content
+           'pre 1 " 0" 'post))
+         (content
+          (regex:regexp-substitute/global
+           #f "(udev_sync =) [0-9]+" content
+           'pre 1 " 0" 'post)))
     (regex:regexp-substitute/global
      output-port "(udev_rules =) [0-9]+" content
      'pre 1 " 0" 'post)))
@@ -171,23 +171,23 @@ exec guile -e main -s "$0" "$@"
       (display "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"")
       (newline)
       (let ((cmdline-linux-args
-	     (append
-	      (if (not (and (member "zfs" modules) zpool zroot)) '()
-	       (list (string-append "root=ZFS=" zpool "/" zroot)))
-	      (if (not serial-only?) '()
-	       (list "console=ttyS0,115200")))))
-	(when (not (null? cmdline-linux-args))
-	  (format #t "GRUB_CMDLINE_LINUX=\"~A\""
-	   (string-join cmdline-linux-args " "))
-	  (newline)))
+             (append
+              (if (not (and (member "zfs" modules) zpool zroot)) '()
+               (list (string-append "root=ZFS=" zpool "/" zroot)))
+              (if (not serial-only?) '()
+               (list "console=ttyS0,115200")))))
+        (when (not (null? cmdline-linux-args))
+          (format #t "GRUB_CMDLINE_LINUX=\"~A\""
+           (string-join cmdline-linux-args " "))
+          (newline)))
       (when serial-only?
-	(display "GRUB_TERMINAL=\"console serial\"")
-	(newline))
+        (display "GRUB_TERMINAL=\"console serial\"")
+        (newline))
       (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules " ") "\""))
       (newline)
       (when (member "cryptodisk" modules)
-	(display "GRUB_ENABLE_CRYPTODISK=y")
-	(newline)))))
+        (display "GRUB_ENABLE_CRYPTODISK=y")
+        (newline)))))
 
 (define (file-tree-missing? root-dir filename)
   (ftw root-dir (lambda (path info flag)
@@ -196,7 +196,7 @@ exec guile -e main -s "$0" "$@"
 (define* (install-kernel-and-grub arch bootdev grub-modules #:key uefiboot? zpool zroot serial-only?)
   ;; KERNEL
   (let ((release (deps:read-debian-version))
-	(package (string-append "linux-image-" arch)))
+        (package (string-append "linux-image-" arch)))
     (cond
      ((and zpool (= 8 release))
       (system* "apt" "install" "-y" "-t" "jessie-backports" package))
@@ -253,10 +253,10 @@ exec guile -e main -s "$0" "$@"
   (system* "apt" "install" "-y" "debootstrap")
   (utils:println "Bootstrapping Debian release" release "for archictecture" arch "...")
   (let ((command
-	 `("debootstrap" "--arch" ,arch "--include"
-	   ,(string-join bootstrap-include-list ",")
-	   ,@(if no-check-gpg? (list "--no-check-gpg") '())
-	   ,release ,target ,mirror)))
+         `("debootstrap" "--arch" ,arch "--include"
+           ,(string-join bootstrap-include-list ",")
+           ,@(if no-check-gpg? (list "--no-check-gpg") '())
+           ,release ,target ,mirror)))
     (when (not (zero? (apply system* command)))
       (error "Failed to bootstrap the Debian system!" target arch release mirror))))
 
@@ -283,8 +283,8 @@ exec guile -e main -s "$0" "$@"
     (arch
      (description
       ,(string-append
-	"The target architecture of the new system. Has to be of either: "
-	(string-join archictecture-list ", ") "."))
+        "The target architecture of the new system. Has to be of either: "
+        (string-join archictecture-list ", ") "."))
      (single-char #\a)
      (predicate ,(lambda (arch) (member arch archictecture-list)))
      (default "amd64")
@@ -375,34 +375,34 @@ Toggles the finalise option.")
 
 (define (main args)
   (let* ((options (utils:getopt-extra args options-spec))
-	 (target (hash-ref options 'target))
-	 (config-file (utils:path target utils:config-filename))
-	 (release (hash-ref options 'release))
-	 (arch (hash-ref options 'arch))
-	 (mirror (hash-ref options 'mirror))
-	 (locale (hash-ref options 'locale))
-	 (keymap (hash-ref options 'keymap))
-	 (keymap-parts (string-split keymap #\:))
-	 (keyboard-layout (car keymap-parts))
-	 (keyboard-variant (cadr keymap-parts))
-	 (timezone (hash-ref options 'timezone))
-	 (serial-only? (hash-ref options 'serial-only))
-	 (hostname (hash-ref options 'hostname))
-	 (password (hash-ref options 'password))
-	 (sudouser (hash-ref options 'sudouser))
-	 (unattended? (hash-ref options 'unattended))
-	 (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
-	 (skip-sudouser-prompt? (not (equal? skip-sudouser-prompt? unattended?)))
-	 (no-check-gpg? (hash-ref options 'no-check-gpg))
-	 (accept-openzfs-license? (hash-ref options 'accept-openzfs-license))
-	 (accept-openzfs-license? (not (equal? accept-openzfs-license? unattended?)))
-	 (finalise? (hash-ref options 'finalise))
-	 (finalise? (not (equal? finalise? unattended?)))
-	 (bootstrap-only? (hash-ref options 'bootstrap-only))
-	 (configure-only? (hash-ref options 'configure-only))
-	 (finalise-only? (hash-ref options 'finalise-only))
-	 (finalise? (or finalise? finalise-only?))
-	 (help? (hash-ref options 'help)))
+         (target (hash-ref options 'target))
+         (config-file (utils:path target utils:config-filename))
+         (release (hash-ref options 'release))
+         (arch (hash-ref options 'arch))
+         (mirror (hash-ref options 'mirror))
+         (locale (hash-ref options 'locale))
+         (keymap (hash-ref options 'keymap))
+         (keymap-parts (string-split keymap #\:))
+         (keyboard-layout (car keymap-parts))
+         (keyboard-variant (cadr keymap-parts))
+         (timezone (hash-ref options 'timezone))
+         (serial-only? (hash-ref options 'serial-only))
+         (hostname (hash-ref options 'hostname))
+         (password (hash-ref options 'password))
+         (sudouser (hash-ref options 'sudouser))
+         (unattended? (hash-ref options 'unattended))
+         (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
+         (skip-sudouser-prompt? (not (equal? skip-sudouser-prompt? unattended?)))
+         (no-check-gpg? (hash-ref options 'no-check-gpg))
+         (accept-openzfs-license? (hash-ref options 'accept-openzfs-license))
+         (accept-openzfs-license? (not (equal? accept-openzfs-license? unattended?)))
+         (finalise? (hash-ref options 'finalise))
+         (finalise? (not (equal? finalise? unattended?)))
+         (bootstrap-only? (hash-ref options 'bootstrap-only))
+         (configure-only? (hash-ref options 'configure-only))
+         (finalise-only? (hash-ref options 'finalise-only))
+         (finalise? (or finalise? finalise-only?))
+         (help? (hash-ref options 'help)))
     (cond
      (help?
       (display
@@ -433,159 +433,159 @@ Valid options are:
       (error "This script must be run as root!"))
      (else
       (when (not (or configure-only? finalise-only?))
-	(bootstrap target arch release mirror no-check-gpg?)
-	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
+        (bootstrap target arch release mirror no-check-gpg?)
+        (utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
       (let* ((config (utils:read-config config-file))
-	     (rootdev (hash-ref config 'rootdev))
-	     (luks-v2? (hash-ref config 'luksv2))
-	     (bootdev (hash-ref config 'bootdev rootdev))
-	     (uefiboot? (hash-ref config 'uefiboot))
-	     (swapfiles (hash-ref config 'swapfiles))
-	     (swapfiles (and swapfiles (string->number swapfiles)))
-	     (zpool (hash-ref config 'zpool))
-	     (zroot (hash-ref config 'zroot))
-	     (grub-module-store (make-hash-table 1))
-	     (get-grub-modules
-	      (lambda () (hash-ref grub-module-store #:value '())))
-	     (add-grub-module
-	      (lambda (module)
-		(let ((curr (get-grub-modules)))
-		  (hash-set! grub-module-store #:value (cons module curr)))))
-	     (pid (primitive-fork)))
-	(cond
-	 ((zero? pid)
-	  (when (not (or bootstrap-only? finalise-only?))
-	    (utils:println "Configuring new Debian system...")
-	    (for-each
-	     (lambda (dir)
-	       (let ((target-path (utils:path target dir)))
-		 (when (not (file-exists? target-path))
-		   (mkdir target-path))
-		 (when (not (zero? (system* "mountpoint" "-q" target-path)))
-		   (system* "mount" "--rbind" (utils:path "" dir) target-path))))
-	     pseudofs-dirs)
-	    (chroot target)
-	    (chdir "/")
-	    (setenv "LANG" "C.UTF-8")
-	    (cond
-	     ((not bootdev)
-	      (error "boot device has to be specified!"))
-	     ((not (utils:block-device? bootdev))
-	      (error "boot device has to be a block device!" bootdev))
-	     ((and luks-v2? (<= 10 (or (deps:read-debian-version) 0)))
-	      (error "LUKS format version 2 is only supported in Debian Buster or later!"))
-	     (else
-	      (init-apt)
-	      (init-network)
-	      (init-hostname hostname)
-	      (configure-hosts hostname)
-	      (configure-locale locale)
-	      (configure-timezone timezone)
-	      (configure-keyboard
-	       #:skip-check? password
-	       #:layout keyboard-layout
-	       #:variant keyboard-variant)
-	      (init-sudouser sudouser
-	       #:skip-prompt? skip-sudouser-prompt?
-	       #:password password)
-	      (when rootdev
-		(system* "apt" "install" "-y" "cryptsetup")
-		(add-grub-module "cryptodisk"))
-	      (cond
-	       (zpool
-		(deps:install-deps-zfs accept-openzfs-license?)
-		(system* "systemctl" "enable" "zfs.target")
-		(system* "systemctl" "mask" "hibernate.target")
+             (rootdev (hash-ref config 'rootdev))
+             (luks-v2? (hash-ref config 'luksv2))
+             (bootdev (hash-ref config 'bootdev rootdev))
+             (uefiboot? (hash-ref config 'uefiboot))
+             (swapfiles (hash-ref config 'swapfiles))
+             (swapfiles (and swapfiles (string->number swapfiles)))
+             (zpool (hash-ref config 'zpool))
+             (zroot (hash-ref config 'zroot))
+             (grub-module-store (make-hash-table 1))
+             (get-grub-modules
+              (lambda () (hash-ref grub-module-store #:value '())))
+             (add-grub-module
+              (lambda (module)
+                (let ((curr (get-grub-modules)))
+                  (hash-set! grub-module-store #:value (cons module curr)))))
+             (pid (primitive-fork)))
+        (cond
+         ((zero? pid)
+          (when (not (or bootstrap-only? finalise-only?))
+            (utils:println "Configuring new Debian system...")
+            (for-each
+             (lambda (dir)
+               (let ((target-path (utils:path target dir)))
+                 (when (not (file-exists? target-path))
+                   (mkdir target-path))
+                 (when (not (zero? (system* "mountpoint" "-q" target-path)))
+                   (system* "mount" "--rbind" (utils:path "" dir) target-path))))
+             pseudofs-dirs)
+            (chroot target)
+            (chdir "/")
+            (setenv "LANG" "C.UTF-8")
+            (cond
+             ((not bootdev)
+              (error "boot device has to be specified!"))
+             ((not (utils:block-device? bootdev))
+              (error "boot device has to be a block device!" bootdev))
+             ((and luks-v2? (<= 10 (or (deps:read-debian-version) 0)))
+              (error "LUKS format version 2 is only supported in Debian Buster or later!"))
+             (else
+              (init-apt)
+              (init-network)
+              (init-hostname hostname)
+              (configure-hosts hostname)
+              (configure-locale locale)
+              (configure-timezone timezone)
+              (configure-keyboard
+               #:skip-check? password
+               #:layout keyboard-layout
+               #:variant keyboard-variant)
+              (init-sudouser sudouser
+               #:skip-prompt? skip-sudouser-prompt?
+               #:password password)
+              (when rootdev
+                (system* "apt" "install" "-y" "cryptsetup")
+                (add-grub-module "cryptodisk"))
+              (cond
+               (zpool
+                (deps:install-deps-zfs accept-openzfs-license?)
+                (system* "systemctl" "enable" "zfs.target")
+                (system* "systemctl" "mask" "hibernate.target")
                 (system* "zpool" "set" "cachefile=/etc/zfs/zpool.cache" zpool)
-		(add-grub-module "zfs"))
-	       ((zero? swapfiles)
-		(deps:install-deps-lvm)
-		(add-grub-module "lvm")
-		(let* ((lvm-dir (utils:path "" "etc" "lvm"))
-		       (lvm-file (utils:path lvm-dir "lvm.conf"))
-		       (lvmbak-file (string-append lvm-file ".bak")))
-		  (when (not (file-exists? lvmbak-file))
-		    (copy-file lvm-file lvmbak-file))
-		  (call-with-input-file lvmbak-file
-		    (lambda (input-port)
-		      (call-with-output-file lvm-file
-			(lambda (output-port)
-			  (update-lvm-config input-port output-port)))))
-		  (delete-file lvmbak-file))))
-	      (install-kernel-and-grub
-	       arch bootdev (get-grub-modules)
-	       #:uefiboot? uefiboot?
-	       #:zpool zpool
-	       #:zroot (and (not rootdev) zroot)
-	       #:serial-only?
-	       serial-only?)))
-	    (system* "apt" "autoremove" "-y")
-	    (when (equal? "localhost" (uri-host (string->uri mirror)))
-	      (let* ((new-file "/etc/apt/sources.list")
-		     (old-file (string-append new-file ".old")))
-		(utils:move-file new-file old-file)
-		(call-with-input-file old-file
-		  (lambda (input-port)
-		    (call-with-output-file new-file
-		      (lambda (output-port)
-			(let* ((pattern
-				(make-regexp
-				 "^deb ([^ ]+) ([^ ]+) (.+)$"
-				 regexp/newline))
-			       (result (rdelim:read-string input-port))
-			       (result (regexp-exec pattern result))
-			       (components (regex:match:substring result 3)))
-			  (regex:regexp-substitute output-port result "#
+                (add-grub-module "zfs"))
+               ((zero? swapfiles)
+                (deps:install-deps-lvm)
+                (add-grub-module "lvm")
+                (let* ((lvm-dir (utils:path "" "etc" "lvm"))
+                       (lvm-file (utils:path lvm-dir "lvm.conf"))
+                       (lvmbak-file (string-append lvm-file ".bak")))
+                  (when (not (file-exists? lvmbak-file))
+                    (copy-file lvm-file lvmbak-file))
+                  (call-with-input-file lvmbak-file
+                    (lambda (input-port)
+                      (call-with-output-file lvm-file
+                        (lambda (output-port)
+                          (update-lvm-config input-port output-port)))))
+                  (delete-file lvmbak-file))))
+              (install-kernel-and-grub
+               arch bootdev (get-grub-modules)
+               #:uefiboot? uefiboot?
+               #:zpool zpool
+               #:zroot (and (not rootdev) zroot)
+               #:serial-only?
+               serial-only?)))
+            (system* "apt" "autoremove" "-y")
+            (when (equal? "localhost" (uri-host (string->uri mirror)))
+              (let* ((new-file "/etc/apt/sources.list")
+                     (old-file (string-append new-file ".old")))
+                (utils:move-file new-file old-file)
+                (call-with-input-file old-file
+                  (lambda (input-port)
+                    (call-with-output-file new-file
+                      (lambda (output-port)
+                        (let* ((pattern
+                                (make-regexp
+                                 "^deb ([^ ]+) ([^ ]+) (.+)$"
+                                 regexp/newline))
+                               (result (rdelim:read-string input-port))
+                               (result (regexp-exec pattern result))
+                               (components (regex:match:substring result 3)))
+                          (regex:regexp-substitute output-port result "#
 # This system was installed using a locally hosted apt mirror.
 # The below source entry was disabled at the end of the installation
 # process. For information about how to configure apt package sources,
 # see the sources.list(5) manual.
 
 # " 0 'post)
-			  (newline output-port)
-			  (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
-				  release components)
-			  (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
-				  release components)
-			  (format output-port "deb http://security.debian.org/debian-security ~A ~A\n"
-				  (string-append release "-security") components)
-			  (format output-port "deb-src http://security.debian.org/debian-security ~A ~A\n"
-				  (string-append release "-security") components)
-			  (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
-				  (string-append release "-updates") components)
-			  (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
-				  (string-append release "-updates") components))))))
-		(delete-file old-file)))
-	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!"))
-	  (primitive-exit 0))
-	 (else
-	  (waitpid pid)
-	  (let ((resp
-		 (cond
-		  (bootstrap-only? "N")
-		  (finalise? "Y")
-		  (unattended? "N")
-		  (else (readline "Ready to finalise installation? [Y/n]")))))
-	    (cond
-	     ((regex:string-match "[nN]" resp)
-	      (utils:println "Skipped executing finishing steps!"))
-	     (else
-	      (delete-file config-file)
-	      (utils:println "Removed" config-file "!")
-	      (utils:println "Unmounting installation directories...")
-	      (for-each
-	       (lambda (dir)
-		 (system* "umount" "-Rlf" (utils:path target dir)))
-	       (reverse pseudofs-dirs))
-	      (when uefiboot?
-		(system* "umount" (utils:path target "boot" "efi")))
-	      (system* "umount" (utils:path target "boot"))
-	      (when zpool
-		(system* "zfs" "umount" "-a")
-		(let ((root-dataset (utils:path zpool zroot)))
-		  (system* "zfs" "set" "mountpoint=/" root-dataset)
-		  (system* "zfs" "snapshot" "-r" (string-append root-dataset "@install")))
-		(system* "zpool" "export" zpool))
-	      (when rootdev
-		(system* "umount" target))
-	      (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
+                          (newline output-port)
+                          (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
+                                  release components)
+                          (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
+                                  release components)
+                          (format output-port "deb http://security.debian.org/debian-security ~A ~A\n"
+                                  (string-append release "-security") components)
+                          (format output-port "deb-src http://security.debian.org/debian-security ~A ~A\n"
+                                  (string-append release "-security") components)
+                          (format output-port "deb http://deb.debian.org/debian ~A ~A\n"
+                                  (string-append release "-updates") components)
+                          (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
+                                  (string-append release "-updates") components))))))
+                (delete-file old-file)))
+            (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!"))
+          (primitive-exit 0))
+         (else
+          (waitpid pid)
+          (let ((resp
+                 (cond
+                  (bootstrap-only? "N")
+                  (finalise? "Y")
+                  (unattended? "N")
+                  (else (readline "Ready to finalise installation? [Y/n]")))))
+            (cond
+             ((regex:string-match "[nN]" resp)
+              (utils:println "Skipped executing finishing steps!"))
+             (else
+              (delete-file config-file)
+              (utils:println "Removed" config-file "!")
+              (utils:println "Unmounting installation directories...")
+              (for-each
+               (lambda (dir)
+                 (system* "umount" "-Rlf" (utils:path target dir)))
+               (reverse pseudofs-dirs))
+              (when uefiboot?
+                (system* "umount" (utils:path target "boot" "efi")))
+              (system* "umount" (utils:path target "boot"))
+              (when zpool
+                (system* "zfs" "umount" "-a")
+                (let ((root-dataset (utils:path zpool zroot)))
+                  (system* "zfs" "set" "mountpoint=/" root-dataset)
+                  (system* "zfs" "snapshot" "-r" (string-append root-dataset "@install")))
+                (system* "zpool" "export" zpool))
+              (when rootdev
+                (system* "umount" target))
+              (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))

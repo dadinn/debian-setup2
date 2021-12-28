@@ -16,13 +16,13 @@ Supports unattended execution by providing sudo-user password as command-line ar
 
 To configure a bootable system under chroot, set the hostname, and create a sudo-enabled user, run the following command:
 
-	./install.scm -n host.example.com -u admin
+    ./install.scm -n host.example.com -u admin
 
 This installs all the necessary packages for LVM, LUKS, ZFS, GRUB, and kernel images, and configures specified keyboard layout, and basic network interfaces.
 
 It is possible to run the same command in unattended mode, where all prompts are answered, and sudo user or root password can be set as a command line argument:
 
-	./install.scm -A -n hostname -u user -p 'Password123!'
+    ./install.scm -A -n hostname -u user -p 'Password123!'
 
 Alternatively, it is possible to run the installation in multiple steps:
 
