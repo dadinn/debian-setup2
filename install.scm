@@ -142,8 +142,7 @@ exec guile -e main -s "$0" "$@"
       (system* "apt" "install" "-y" "sudo")
       (system* "useradd" "-m" "-G" "sudo" username "-s" "/bin/bash")
       (set-password username password)
-      (system* "passwd" "-l" "root")
-      (system* "usermod" "-s" "/sbin/nologin" "root"))
+      (system* "passwd" "-l" "root"))
      (else
       (set-password "root" password)))))
 
