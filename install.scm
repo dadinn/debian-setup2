@@ -490,11 +490,9 @@ Valid options are:
 	      (cond
 	       (zpool
 		(deps:install-deps-zfs accept-openzfs-license?)
-		(add-grub-module "zfs")
-		(system* "systemctl" "enable" "zfs-import-cache.service")
-		(system* "systemctl" "enable" "zfs-import-cache.target")
-		(system* "systemctl" "enable" "zfs-mount.service")
-		(system* "systemctl" "enable" "zfs-mount.target"))
+		(system* "systemctl" "enable" "zfs.target")
+                (system* "zpool" "set" "cachefile=/etc/zfs/zpool.cache" zpool)
+		(add-grub-module "zfs"))
 	       ((zero? swapfiles)
 		(deps:install-deps-lvm)
 		(add-grub-module "lvm")
