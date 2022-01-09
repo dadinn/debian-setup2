@@ -346,6 +346,9 @@ https://github.com/openzfs/zfs/blob/master/LICENSE"))
       "Runs script in unattended mode. Requires password to be specified.
 Toggles options skip-sudouser-prompt, accept-openzfs-license, finalise.")
      (single-char #\A))
+    (no-check-gpg
+     (description
+      "Skip verifying GPG signatures of retrieved Release files when bootstrapping new system."))
     (bootstrap-only
      (description
       "Skip configuring bootstrapped installation, and only do the bootstrapping of the new system.")
@@ -387,6 +390,7 @@ Toggles the finalise option.")
 	 (unattended? (hash-ref options 'unattended))
 	 (skip-sudouser-prompt? (hash-ref options 'skip-sudouser-prompt))
 	 (skip-sudouser-prompt? (not (equal? skip-sudouser-prompt? unattended?)))
+	 (no-check-gpg? (hash-ref options 'no-check-gpg))
 	 (accept-openzfs-license? (hash-ref options 'accept-openzfs-license))
 	 (accept-openzfs-license? (not (equal? accept-openzfs-license? unattended?)))
 	 (finalise? (hash-ref options 'finalise))
@@ -426,7 +430,7 @@ Valid options are:
       (error "This script must be run as root!"))
      (else
       (when (not (or configure-only? finalise-only?))
-	(bootstrap target arch release mirror)
+	(bootstrap target arch release mirror no-check-gpg?)
 	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
       (let* ((config (utils:read-config config-file))
 	     (rootdev (hash-ref config 'rootdev))
