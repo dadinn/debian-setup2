@@ -519,6 +519,7 @@ Valid options are:
 	       #:zroot (and (not rootdev) zroot)
 	       #:serial-only?
 	       serial-only?)))
+	    (system* "apt" "autoremove" "-y")
 	    (when (equal? "localhost" (uri-host (string->uri mirror)))
 	      (let* ((new-file "/etc/apt/sources.list")
 		     (old-file (string-append new-file ".old")))
