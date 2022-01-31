@@ -184,7 +184,7 @@ exec guile -e main -s "$0" "$@"
       (when serial-only?
 	(display "GRUB_TERMINAL=\"console serial\"")
 	(newline))
-      (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules ",") "\""))
+      (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules " ") "\""))
       (newline)
       (when (member "cryptodisk" modules)
 	(display "GRUB_CRYPTODISK_ENABLE=y")
