@@ -187,7 +187,7 @@ exec guile -e main -s "$0" "$@"
       (display (string-append "GRUB_PRELOAD_MODULES=\"" (string-join modules " ") "\""))
       (newline)
       (when (member "cryptodisk" modules)
-	(display "GRUB_CRYPTODISK_ENABLE=y")
+	(display "GRUB_ENABLE_CRYPTODISK=y")
 	(newline)))))
 
 (define (file-tree-missing? root-dir filename)
