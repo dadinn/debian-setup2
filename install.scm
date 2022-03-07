@@ -580,7 +580,7 @@ Valid options are:
 		(system* "zfs" "umount" "-a")
 		(let ((root-dataset (utils:path zpool zroot)))
 		  (system* "zfs" "set" "mountpoint=/" root-dataset)
-		  (system* "zfs" "snapshot" (string-append root-dataset "@install")))
+		  (system* "zfs" "snapshot" "-r" (string-append root-dataset "@install")))
 		(system* "zpool" "export" zpool))
 	       (else (system* "umount" target)))
 	      (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
