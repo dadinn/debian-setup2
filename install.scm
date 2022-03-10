@@ -490,8 +490,7 @@ Valid options are:
 	     (lambda (dir)
 	       (system* "umount" "-Rlf" (utils:path target dir)))
 	     (reverse pseudofs-dirs))
-	    (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")
-	    (let ((resp (readline "Ready to finish installation and reboot the system? [Y/n]")))
+	    (let ((resp (readline "Ready to finalise installation? [Y/n]")))
 	      (cond
 	       ((regex:string-match "[nN]" resp)
 		(utils:println "Skipped executing finishing steps!"))
@@ -508,5 +507,4 @@ Valid options are:
 		    (system* "zfs" "snapshot" (string-append root-dataset "@install")))
 		  (system* "zpool" "export" zpool))
 		 (else (system* "umount" target)))
-		(utils:println "Rebooting system...")
-		(system* "systemctl" "poweroff"))))))))))))
+		(utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!"))))))))))))
