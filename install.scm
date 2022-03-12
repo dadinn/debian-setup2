@@ -486,16 +486,16 @@ Valid options are:
 	    (primitive-exit 0))
 	   (else
 	    (waitpid pid)
-	    (for-each
-	     (lambda (dir)
-	       (system* "umount" "-Rlf" (utils:path target dir)))
-	     (reverse pseudofs-dirs))
 	    (let ((resp (readline "Ready to finalise installation? [Y/n]")))
 	      (cond
 	       ((regex:string-match "[nN]" resp)
 		(utils:println "Skipped executing finishing steps!"))
 	       (else
 		(utils:println "Unmounting installation directories...")
+		(for-each
+		 (lambda (dir)
+		   (system* "umount" "-Rlf" (utils:path target dir)))
+		 (reverse pseudofs-dirs))
 		(when uefiboot?
 		  (system* "umount" (utils:path target "boot" "efi")))
 		(system* "umount" (utils:path target "boot"))
