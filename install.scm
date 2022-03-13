@@ -409,27 +409,27 @@ Valid options are:
       (when (not (or configure-only? finalise-only?))
 	(bootstrap target arch release mirror)
 	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
-	(let* ((config (utils:read-config config-file))
-	       (rootdev (hash-ref config 'rootdev))
-	       (luks-v2? (hash-ref config 'luksv2))
-	       (bootdev (hash-ref config 'bootdev rootdev))
-	       (uefiboot? (hash-ref config 'uefiboot))
-	       (swapfiles (hash-ref config 'swapfiles))
-	       (swapfiles (and swapfiles (string->number swapfiles)))
-	       (zpool (hash-ref config 'zpool))
-	       (zroot (hash-ref config 'zroot))
-	       (grub-module-store (make-hash-table 1))
-	       (get-grub-modules
-		(lambda () (hash-ref grub-module-store #:value '())))
-	       (add-grub-module
-		(lambda (module)
-		  (let ((curr (get-grub-modules)))
-		    (hash-set! grub-module-store #:value (cons module curr)))))
-	       (pid (primitive-fork)))
-	  (cond
-	   ((zero? pid)
-	    (when (not (or bootstrap-only? finalise-only?))
-	      (utils:println "Configuring new Debian system...")
+      (let* ((config (utils:read-config config-file))
+	     (rootdev (hash-ref config 'rootdev))
+	     (luks-v2? (hash-ref config 'luksv2))
+	     (bootdev (hash-ref config 'bootdev rootdev))
+	     (uefiboot? (hash-ref config 'uefiboot))
+	     (swapfiles (hash-ref config 'swapfiles))
+	     (swapfiles (and swapfiles (string->number swapfiles)))
+	     (zpool (hash-ref config 'zpool))
+	     (zroot (hash-ref config 'zroot))
+	     (grub-module-store (make-hash-table 1))
+	     (get-grub-modules
+	      (lambda () (hash-ref grub-module-store #:value '())))
+	     (add-grub-module
+	      (lambda (module)
+		(let ((curr (get-grub-modules)))
+		  (hash-set! grub-module-store #:value (cons module curr)))))
+	     (pid (primitive-fork)))
+	(cond
+	 ((zero? pid)
+	  (when (not (or bootstrap-only? finalise-only?))
+	    (utils:println "Configuring new Debian system...")
 	    (for-each
 	     (lambda (dir)
 	       (let ((target-path (utils:path target dir)))
@@ -527,33 +527,35 @@ Valid options are:
 				  (string-append release "-updates") components))))))
 		(delete-file old-file)))
 	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!"))
-	    (primitive-exit 0))
-	   (else
-	    (waitpid pid)
-	    (let ((resp
-		   (cond
-		    (bootstrap-only? "N")
-		    (finalise? "Y")
-		    (unattended? "N")
-		    (else (readline "Ready to finalise installation? [Y/n]")))))
+	  (primitive-exit 0))
+	 (else
+	  (waitpid pid)
+	  (let ((resp
+		 (cond
+		  (bootstrap-only? "N")
+		  (finalise? "Y")
+		  (unattended? "N")
+		  (else (readline "Ready to finalise installation? [Y/n]")))))
+	    (cond
+	     ((regex:string-match "[nN]" resp)
+	      (utils:println "Skipped executing finishing steps!"))
+	     (else
+	      (delete-file config-file)
+	      (utils:println "Removed" config-file "!")
+	      (utils:println "Unmounting installation directories...")
+	      (for-each
+	       (lambda (dir)
+		 (system* "umount" "-Rlf" (utils:path target dir)))
+	       (reverse pseudofs-dirs))
+	      (when uefiboot?
+		(system* "umount" (utils:path target "boot" "efi")))
+	      (system* "umount" (utils:path target "boot"))
 	      (cond
-	       ((regex:string-match "[nN]" resp)
-		(utils:println "Skipped executing finishing steps!"))
-	       (else
-		(utils:println "Unmounting installation directories...")
-		(for-each
-		 (lambda (dir)
-		   (system* "umount" "-Rlf" (utils:path target dir)))
-		 (reverse pseudofs-dirs))
-		(when uefiboot?
-		  (system* "umount" (utils:path target "boot" "efi")))
-		(system* "umount" (utils:path target "boot"))
-		(cond
-		 (zpool
-		  (system* "zfs" "umount" "-a")
-		  (let ((root-dataset (utils:path zpool zroot)))
-		    (system* "zfs" "set" "mountpoint=/" root-dataset)
-		    (system* "zfs" "snapshot" (string-append root-dataset "@install")))
-		  (system* "zpool" "export" zpool))
-		 (else (system* "umount" target)))
-		(utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
+	       (zpool
+		(system* "zfs" "umount" "-a")
+		(let ((root-dataset (utils:path zpool zroot)))
+		  (system* "zfs" "set" "mountpoint=/" root-dataset)
+		  (system* "zfs" "snapshot" (string-append root-dataset "@install")))
+		(system* "zpool" "export" zpool))
+	       (else (system* "umount" target)))
+	      (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
