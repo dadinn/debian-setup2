@@ -336,6 +336,11 @@ Toggles options skip-sudouser-prompt, accept-openzfs-license, finalise.")
      (description
       "Skip bootstrapping new system, and only execute configuration steps in chroot environment.")
      (single-char #\C))
+    (finalise-only
+     (description
+      "Skip bootstrapping or configuring installation, and only execute finishing steps.
+Toggles the finalise option.")
+     (single-char #\D))
     (help
      (description
       "This usage help...")
@@ -369,6 +374,8 @@ Toggles options skip-sudouser-prompt, accept-openzfs-license, finalise.")
 	 (finalise? (not (equal? finalise? unattended?)))
 	 (bootstrap-only? (hash-ref options 'bootstrap-only))
 	 (configure-only? (hash-ref options 'configure-only))
+	 (finalise-only? (hash-ref options 'finalise-only))
+	 (finalise? (or finalise? finalise-only?))
 	 (help? (hash-ref options 'help)))
     (cond
      (help?
@@ -388,20 +395,20 @@ Valid options are:
       (error "Installation target directory doesn't exist!" target))
      ((not (file-exists? config-file))
       (error "Configuration file doesn't exist!" config-file))
-     ((and bootstrap-only? configure-only?)
-      (error "Both bootstrap-only and configure-only options are used!"))
-     ((and (not bootstrap-only?) (not hostname))
-      (error "Hostname must be specified for the new system!"))
+     ((or (and bootstrap-only? configure-only?)
+       (and bootstrap-only? finalise-only?)
+       (and configure-only? finalise-only?))
+      (error "The bootstrap-only, configure-only, and finalise-only options cannot be used together!"))
+     ((and (not (or bootstrap-only? finalise-only?)) (not hostname))
+      (error "Hostname must be specified to configure the new system!"))
      ((and unattended? (not password))
       (error "Password must be specified when using unattended mode!"))
      ((not (utils:root-user?))
       (error "This script must be run as root!"))
      (else
-      (when (not configure-only?)
+      (when (not (or configure-only? finalise-only?))
 	(bootstrap target arch release mirror)
 	(utils:println "FINISHED BOOTSTRAPPING NEW DEBIAN SYSTEM!"))
-      (when (not bootstrap-only?)
-	(utils:println "Configuring new Debian system...")
 	(let* ((config (utils:read-config config-file))
 	       (rootdev (hash-ref config 'rootdev))
 	       (luks-v2? (hash-ref config 'luksv2))
@@ -421,6 +428,8 @@ Valid options are:
 	       (pid (primitive-fork)))
 	  (cond
 	   ((zero? pid)
+	    (when (not (or bootstrap-only? finalise-only?))
+	      (utils:println "Configuring new Debian system...")
 	    (for-each
 	     (lambda (dir)
 	       (let ((target-path (utils:path target dir)))
@@ -429,7 +438,6 @@ Valid options are:
 	     pseudofs-dirs)
 	    (chroot target)
 	    (chdir "/")
-	    (utils:println "Configuring new Debian system...")
 	    (setenv "LANG" "C.UTF-8")
 	    (cond
 	     ((not bootdev)
@@ -518,19 +526,13 @@ Valid options are:
 			  (format output-port "deb-src http://deb.debian.org/debian ~A ~A\n"
 				  (string-append release "-updates") components))))))
 		(delete-file old-file)))
-	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!")
-	    (let ((resp (readline "Remove configuration script and temporary files? [y/N]")))
-	      (cond
-	       ((regex:string-match "[yY]" resp)
-		(delete-file (utils:path "" utils:config-filename))
-		(utils:println "Removed" utils:config-filename "!"))
-	       (else
-		(utils:println "Skipped cleaning up configuration script and temporary files."))))
+	    (utils:println "FINISHED CONFIGURING NEW DEBIAN SYSTEM!"))
 	    (primitive-exit 0))
 	   (else
 	    (waitpid pid)
 	    (let ((resp
 		   (cond
+		    (bootstrap-only? "N")
 		    (finalise? "Y")
 		    (unattended? "N")
 		    (else (readline "Ready to finalise installation? [Y/n]")))))
@@ -554,4 +556,4 @@ Valid options are:
 		    (system* "zfs" "snapshot" (string-append root-dataset "@install")))
 		  (system* "zpool" "export" zpool))
 		 (else (system* "umount" target)))
-		(utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!"))))))))))))
+		(utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
