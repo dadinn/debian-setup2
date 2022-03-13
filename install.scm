@@ -433,8 +433,10 @@ Valid options are:
 	    (for-each
 	     (lambda (dir)
 	       (let ((target-path (utils:path target dir)))
-		 (when (not (file-exists? target-path)) (mkdir target-path))
-		 (system* "mount" "--rbind" (utils:path "" dir) target-path)))
+		 (when (not (file-exists? target-path))
+		   (mkdir target-path))
+		 (when (not (zero? (system* "mountpoint" "-q" target-path)))
+		   (system* "mount" "--rbind" (utils:path "" dir) target-path))))
 	     pseudofs-dirs)
 	    (chroot target)
 	    (chdir "/")
