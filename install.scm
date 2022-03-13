@@ -490,7 +490,9 @@ Valid options are:
 	    (primitive-exit 0))
 	   (else
 	    (waitpid pid)
-	    (let ((resp (readline "Ready to finalise installation? [Y/n]")))
+	    (let ((resp
+		   (if finalise? "Y"
+		    (readline "Ready to finalise installation? [Y/n]"))))
 	      (cond
 	       ((regex:string-match "[nN]" resp)
 		(utils:println "Skipped executing finishing steps!"))
