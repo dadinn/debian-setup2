@@ -205,7 +205,9 @@ exec guile -e main -s "$0" "$@"
      ((or (and zpool (<= 9 release)) (not zpool))
       (system* "apt" "install" "-y" package))))
   (when zpool
-    (system* "apt" "install" "-y" "zfs-initramfs"))
+    (system* "apt" "install" "-y" "zfs-initramfs")
+    (with-output-to-file (utils:path "" "etc" "initramfs-tools" "conf.d" "resume")
+      (lambda () (display "RESUME=none"))))
   (system "update-initramfs -u -k all")
   ;; GRUB
   (setenv "DEBIAN_FRONTEND" "noninteractive")
