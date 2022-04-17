@@ -491,6 +491,7 @@ Valid options are:
 	       (zpool
 		(deps:install-deps-zfs accept-openzfs-license?)
 		(system* "systemctl" "enable" "zfs.target")
+		(system* "systemctl" "mask" "hibernate.target")
                 (system* "zpool" "set" "cachefile=/etc/zfs/zpool.cache" zpool)
 		(add-grub-module "zfs"))
 	       ((zero? swapfiles)
