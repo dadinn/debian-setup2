@@ -579,12 +579,12 @@ Valid options are:
 	      (when uefiboot?
 		(system* "umount" (utils:path target "boot" "efi")))
 	      (system* "umount" (utils:path target "boot"))
-	      (cond
-	       (zpool
+	      (when zpool
 		(system* "zfs" "umount" "-a")
 		(let ((root-dataset (utils:path zpool zroot)))
 		  (system* "zfs" "set" "mountpoint=/" root-dataset)
 		  (system* "zfs" "snapshot" "-r" (string-append root-dataset "@install")))
 		(system* "zpool" "export" zpool))
-	       (else (system* "umount" target)))
+	      (when rootdev
+		(system* "umount" target))
 	      (utils:println "FINISHED INSTALLING NEW DEBIAN SYSTEM!")))))))))))
