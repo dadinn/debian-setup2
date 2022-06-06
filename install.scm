@@ -516,7 +516,7 @@ Valid options are:
 	       arch bootdev (get-grub-modules)
 	       #:uefiboot? uefiboot?
 	       #:zpool zpool
-	       #:zroot zroot
+	       #:zroot (and (not rootdev) zroot)
 	       #:serial-only?
 	       serial-only?)))
 	    (when (equal? "localhost" (uri-host (string->uri mirror)))
