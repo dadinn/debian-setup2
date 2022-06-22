@@ -205,6 +205,7 @@ exec guile -e main -s "$0" "$@"
      ((or (and zpool (<= 9 release)) (not zpool))
       (system* "apt" "install" "-y" package))))
   (when zpool
+    (system* "zgenhostid" "-f")
     (system* "apt" "install" "-y" "zfs-initramfs")
     (with-output-to-file (utils:path "" "etc" "initramfs-tools" "conf.d" "resume")
       (lambda () (display "RESUME=none"))))
